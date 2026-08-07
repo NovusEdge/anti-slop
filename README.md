@@ -5,12 +5,13 @@ A Claude Code plugin that enforces clear technical prose. Removes AI-generated t
 ## Install
 
 ```bash
+# One-liner
+curl -fsSL https://raw.githubusercontent.com/NovusEdge/anti-slop/main/install.sh | bash
+
+# Or via plugin command
 /plugin install NovusEdge/anti-slop
-```
 
-Or clone and install locally:
-
-```bash
+# Or manual
 git clone https://github.com/NovusEdge/anti-slop ~/.claude/plugins/anti-slop
 ```
 
@@ -24,14 +25,46 @@ Three layers, applied together:
 
 3. **Structural hygiene** — No contrast constructions ("it's not X, it's Y"), rhetorical questions, closing aphorisms, or meta-commentary.
 
-## When to use
+## Usage
 
-- Code comments and docstrings
-- Commit messages and PR descriptions
-- Design docs and READMEs
-- Agent-to-agent messages
+```bash
+/anti-slop              # invoke the skill
+/anti-slop review       # review and fix text
+```
 
-Not for marketing copy or content where voice matters.
+The plugin also runs a hook on Stop events to warn about violations in Claude's output.
+
+## Linter
+
+Standalone Python linter for CI/pre-commit:
+
+```bash
+# Check a file
+python tools/lint.py README.md
+
+# Check with exit code (for CI)
+python tools/lint.py --check README.md
+
+# JSON output
+python tools/lint.py --json README.md
+
+# Stdin
+echo "We leverage robust infrastructure" | python tools/lint.py
+```
+
+### Pre-commit hook
+
+Add to `.pre-commit-config.yaml`:
+
+```yaml
+- repo: local
+  hooks:
+    - id: anti-slop
+      name: anti-slop
+      entry: python ~/.claude/plugins/anti-slop/tools/lint.py --check
+      language: system
+      types: [markdown]
+```
 
 ## Quick reference
 
@@ -54,6 +87,11 @@ If you wouldn't say it to a colleague in a hallway, rewrite it.
 anti-slop/
 ├── .claude-plugin/
 │   └── plugin.json
+├── hooks/
+│   ├── hooks.json
+│   └── lint-output.js
+├── tools/
+│   └── lint.py
 ├── skills/
 │   └── anti-slop/
 │       ├── SKILL.md
@@ -61,6 +99,9 @@ anti-slop/
 │           ├── banned-vocabulary.md
 │           ├── ste-rules.md
 │           └── structural-patterns.md
+├── examples/
+│   └── before-after.md
+├── install.sh
 └── README.md
 ```
 

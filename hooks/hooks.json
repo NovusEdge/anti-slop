@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "toolResult",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/lint-output.js\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

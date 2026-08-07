@@ -1,8 +1,12 @@
 {
   "name": "anti-slop",
+  "displayName": "anti-slop",
   "version": "0.1.0",
   "description": "Enforce clear technical prose — STE grammar, no AI buzzwords, no LinkedIn cadence",
-  "author": "NovusEdge",
+  "author": {
+    "name": "NovusEdge"
+  },
+  "license": "MIT",
   "homepage": "https://github.com/NovusEdge/anti-slop",
   "keywords": [
     "writing",
@@ -15,5 +19,6 @@
   ],
   "skills": [
     "skills/anti-slop"
-  ]
+  ],
+  "hooks": "./hooks/hooks.json"
 }
