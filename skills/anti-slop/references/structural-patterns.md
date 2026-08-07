@@ -1,0 +1,121 @@
+# Structural Patterns to Avoid
+
+Patterns that mark text as LLM-generated or LinkedIn-brained, independent of vocabulary.
+
+## The Contrast Construction
+
+Never define a thing by first negating something the reader did not say. The pattern manufactures a wrong answer so the right one has something to beat.
+
+**Banned forms:**
+- "it's not X, it's Y"
+- "X isn't just Y"
+- "that's A, not B"
+- "less A, more B"
+- "this isn't about A, it's about B"
+- "the real question isn't A, it's B"
+- "not because A, but because B"
+
+Any word order, any tense. Still counts when buried mid-sentence, when it spans two sentences, and when the negated half is implied.
+
+**Fix:** Delete the negated half. State the real thing on its own.
+
+**Before:** "It's not about writing less code, it's about writing clearer code."
+
+**After:** "Clarity matters more than brevity here."
+
+## LinkedIn Cadence
+
+### One-line paragraph for punch
+
+A sentence set apart as its own paragraph to create false drama.
+
+**Before:**
+```
+The system processed 10 million requests.
+
+Without a single failure.
+
+That's what reliability looks like.
+```
+
+**After:**
+```
+The system processed 10 million requests without a single failure.
+```
+
+### Rhetorical question answered immediately
+
+**Before:** "What makes a great engineer? It's not about knowing everything. It's about knowing how to learn."
+
+**After:** "Great engineers learn fast." (or just cut it)
+
+### Closing aphorism
+
+Restating the paragraph as a slogan.
+
+**Before:** "We refactored the payment flow, added retries, and fixed the race condition. At the end of the day, it's all about building systems that work."
+
+**After:** "We refactored the payment flow, added retries, and fixed the race condition."
+
+### Counting what follows
+
+**Before:** "Three things matter here: speed, reliability, and cost."
+
+**After:** "Speed, reliability, and cost matter here."
+
+## Meta-Commentary
+
+Text about the text itself. Cut it.
+
+- "To be clear, ..."
+- "Quick framing first: ..."
+- "I don't want this read as..."
+- "Let me explain what I mean by..."
+- "Before I answer, ..."
+- "The short answer is... The long answer is..."
+
+If the work is scoped right, it shows. If it needs framing, the framing is part of the content, not a disclaimer.
+
+## Structural Tells
+
+### Three-item lists where two are real
+
+Padding to hit a "rule of three".
+
+**Before:** "This change improves performance, readability, and overall code quality."
+
+**After:** "This change improves performance and readability." (if "code quality" is just restating "readability")
+
+### Uniform sentence length
+
+Every sentence in a paragraph being roughly the same length is a tell. Vary naturally.
+
+### Bolding in every bullet
+
+- **Important thing one** — explanation
+- **Important thing two** — explanation
+- **Important thing three** — explanation
+
+If everything is bold, nothing is. Bold sparingly or not at all.
+
+### Title Case In Every Heading
+
+Use sentence case. "How to configure the cache", not "How To Configure The Cache".
+
+### Emoji as section markers
+
+Don't use emoji to mark sections unless the context demands it (e.g., a changelog for a consumer app).
+
+## Detection Heuristics
+
+These patterns are mechanical enough to grep:
+
+1. **Contrast construction:** regex for "not X, it's Y" patterns
+2. **Banned vocabulary:** word list match
+3. **Sentence length uniformity:** stddev of word counts per sentence
+4. **Em-dash frequency:** >2 per paragraph is a tell
+5. **Perfect tense:** "has been", "have been", "had been"
+6. **-ing sentence openers:** sentences starting with gerunds
+7. **Meta phrases:** "to be clear", "it's worth noting", "the reality is"
+
+The semantic rules (one fact per sentence, concrete over abstract, constraint vs mechanism) need human judgment.

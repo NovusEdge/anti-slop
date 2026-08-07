@@ -1,0 +1,19 @@
+{
+  "name": "anti-slop",
+  "version": "0.1.0",
+  "description": "Enforce clear technical prose — STE grammar, no AI buzzwords, no LinkedIn cadence",
+  "author": "NovusEdge",
+  "homepage": "https://github.com/NovusEdge/anti-slop",
+  "keywords": [
+    "writing",
+    "style",
+    "ste",
+    "simplified-technical-english",
+    "ai-detection",
+    "prose",
+    "linting"
+  ],
+  "skills": [
+    "skills/anti-slop"
+  ]
+}
