@@ -13,59 +13,36 @@ import re
 import json
 from pathlib import Path
 
-BANNED_WORDS = [
-    "delve", "leverage", "harness", "foster", "bolster", "underscore",
-    "showcase", "illuminate", "facilitate", "garner", "spearhead",
-    "robust", "seamless", "meticulous", "intricate", "comprehensive",
-    "pivotal", "crucial", "vital", "multifaceted", "nuanced", "holistic",
-    "vibrant", "compelling", "tapestry", "landscape", "realm", "beacon",
-    "cornerstone", "backbone", "lifeblood", "paradigm", "interplay",
-    "symphony", "moreover", "furthermore", "additionally", "notably",
-    "importantly", "fundamentally", "profound", "transformative",
-]
+_PATTERNS = json.loads(
+    (Path(__file__).resolve().parent.parent / "patterns.json").read_text()
+)
 
-BANNED_PHRASES = [
-    r"load[- ]bearing",
-    r"it'?s not .+, it'?s",
-    r"that'?s not .+, that'?s",
-    r"less .+, more",
-    r"not because .+, but because",
-    r"plays a (crucial|vital|key|important) role",
-    r"stands as a testament",
-    r"serves as a?",
-    r"it'?s worth noting",
-    r"at its core",
-    r"the reality is",
-    r"in today'?s fast[- ]paced",
-    r"when it comes to",
-    r"let'?s dive in",
-    r"great question",
-    r"you'?re absolutely right",
-    r"i hope this finds you well",
-    r"certainly!",
-    r"absolutely[.!]",
-    r"north star",
-    r"deep dive",
-    r"game[- ]changer",
-]
-
-STE_PATTERNS = [
-    (r"\b(has|have|had) been \w+ing\b", "perfect progressive tense"),
-    (r"\b(has|have|had) been \w+ed\b", "perfect passive"),
-    (r"\bwill have \w+ed\b", "future perfect"),
-    (r"^[A-Z]\w+ing (the|a|an|\w+)", "-ing sentence opener"),
-]
+# The linter reports the ambiguous words too. Only the Stop hook skips them,
+# where a false positive costs a blocked turn.
+BANNED_WORDS = _PATTERNS["banned_words"] + _PATTERNS["ambiguous_words"]
+BANNED_PHRASES = _PATTERNS["banned_phrases"]
+STE_PATTERNS = [(p, d) for p, d in _PATTERNS["ste_patterns"]]
+STRUCTURAL = [(p, d) for p, d in _PATTERNS["structural"]]
 
 
 def check_text(text: str, filename: str = "<stdin>") -> list[dict]:
+    # Reference files that quote the banned list opt out with this marker.
+    if "anti-slop: ignore-file" in text:
+        return []
+
     findings = []
     lines = text.split("\n")
+    in_fence = False
 
     for i, line in enumerate(lines, 1):
-        # Skip code blocks
-        if line.strip().startswith("```") or line.strip().startswith("`"):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
             continue
 
+        # A banned word quoted as an example is not a violation.
+        line = re.sub(r"`[^`]*`", "``", line)
         lower = line.lower()
 
         # Banned words
@@ -91,6 +68,18 @@ def check_text(text: str, filename: str = "<stdin>") -> list[dict]:
                     "text": line.strip()[:60],
                 })
 
+        # Structural tells
+        for pattern, desc in STRUCTURAL:
+            match = re.search(pattern, line.strip(), re.IGNORECASE)
+            if match:
+                findings.append({
+                    "file": filename,
+                    "line": i,
+                    "type": "structural",
+                    "match": desc,
+                    "text": line.strip()[:60],
+                })
+
         # STE violations
         for pattern, desc in STE_PATTERNS:
             match = re.search(pattern, line, re.IGNORECASE)
@@ -103,13 +92,14 @@ def check_text(text: str, filename: str = "<stdin>") -> list[dict]:
                     "text": line.strip()[:60],
                 })
 
-        # Em-dash frequency (>2 per line)
-        if line.count("—") > 2 or line.count("--") > 2:
+        # Em-dash frequency (>2 per line). Counts only U+2014; "--" collides
+        # with markdown table separators.
+        if line.count("—") > 2:
             findings.append({
                 "file": filename,
                 "line": i,
                 "type": "em_dash_overuse",
-                "match": f"{line.count('—') + line.count('--')} em-dashes",
+                "match": f"{line.count('—')} em-dashes",
                 "text": line.strip()[:60],
             })
 
@@ -127,7 +117,21 @@ def format_findings(findings: list[dict], fmt: str = "text") -> str:
     return "\n".join(lines)
 
 
+def selftest():
+    assert check_text("We leverage the cache."), "banned word missed"
+    assert not check_text("We `leverage` the cache."), "inline code not skipped"
+    assert not check_text("```\nWe leverage it.\n```"), "fenced block not skipped"
+    assert check_text("It's not a cache, it's a buffer."), "contrast form missed"
+    assert check_text("Handling the error takes care."), "-ing opener missed"
+    assert not check_text("The registry holds one lock per vm."), "false positive"
+    print("selftest ok")
+
+
 def main():
+    if "--selftest" in sys.argv:
+        selftest()
+        return
+
     check_mode = "--check" in sys.argv
     json_mode = "--json" in sys.argv
     args = [a for a in sys.argv[1:] if not a.startswith("--")]

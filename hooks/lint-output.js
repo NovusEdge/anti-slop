@@ -1,90 +1,167 @@
 #!/usr/bin/env node
-/**
- * anti-slop hook — checks Claude's output for banned patterns
- * Runs on Stop event, warns if violations detected
- */
+// Stop hook. Reads the last assistant turn from the transcript and reports slop.
+// Exit 2 with stderr is the only channel Claude reads back; stdout is discarded.
+//
+// Blocks only on patterns.json sets named in hook_confidence. ambiguous_words
+// stay out of it: "harness", "landscape" and "key" are real technical words, and
+// blocking a turn over one trains the user to disable the plugin.
 
-const BANNED_WORDS = [
-  'delve', 'leverage', 'harness', 'foster', 'bolster', 'underscore',
-  'showcase', 'illuminate', 'facilitate', 'garner', 'spearhead',
-  'robust', 'seamless', 'meticulous', 'intricate', 'comprehensive',
-  'pivotal', 'crucial', 'vital', 'multifaceted', 'nuanced', 'holistic',
-  'vibrant', 'compelling', 'tapestry', 'landscape', 'realm', 'beacon',
-  'cornerstone', 'backbone', 'lifeblood', 'paradigm', 'interplay',
-  'symphony', 'moreover', 'furthermore', 'additionally', 'notably',
-  'importantly', 'fundamentally', 'profound', 'transformative',
-  'load-bearing', 'north star', 'deep dive', 'game-changer'
-];
+const fs = require('fs');
+const path = require('path');
 
-const BANNED_PHRASES = [
-  /it's not .+, it's/i,
-  /that's not .+, that's/i,
-  /less .+, more/i,
-  /plays a (crucial|vital|key) role/i,
-  /stands as a testament/i,
-  /it's worth noting/i,
-  /in today's fast-paced/i,
-  /let's dive in/i,
-  /great question/i,
-  /certainly!/i,
-];
+const P = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'patterns.json'), 'utf8')
+);
+const MAX_REPORTED = 6;
 
 let input = '';
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', chunk => input += chunk);
+process.stdin.on('data', c => (input += c));
 process.stdin.on('end', () => {
+  let violations;
   try {
     const data = JSON.parse(input);
-    const text = extractAssistantText(data);
-    if (!text) process.exit(0);
+    // Without this guard the block-and-retry loop never terminates.
+    if (data.stop_hook_active) process.exit(0);
 
-    const violations = checkText(text);
-    if (violations.length > 0) {
-      console.log('\n**anti-slop:** ' + violations.length + ' violation(s) detected');
-      violations.slice(0, 3).forEach(v => {
-        console.log(`  - ${v.type}: "${v.match}"`);
-      });
-      if (violations.length > 3) {
-        console.log(`  - ...and ${violations.length - 3} more`);
-      }
-    }
+    const turn = lastTurn(data.transcript_path);
+    if (!turn.assistant) process.exit(0);
+    violations = check(turn.assistant, turn.user);
   } catch (e) {
     process.exit(0);
   }
+
+  if (violations.length === 0) process.exit(0);
+
+  const lines = violations.slice(0, MAX_REPORTED).map(v =>
+    `  [${v.kind}] ${v.match}\n      "${v.sentence}"`
+  );
+  const more =
+    violations.length > MAX_REPORTED
+      ? `\n  ...and ${violations.length - MAX_REPORTED} more`
+      : '';
+
+  process.stderr.write(
+    `anti-slop: ${violations.length} violation(s) in your last message.\n` +
+      lines.join('\n') +
+      more +
+      '\n\nRewrite only the sentences quoted above. Keep everything else as it is.\n' +
+      'Do not mention this correction in your reply.\n'
+  );
+  process.exit(2);
 });
 
-function extractAssistantText(data) {
-  if (data.assistant_message) return data.assistant_message;
-  if (data.messages) {
-    const assistant = data.messages.filter(m => m.role === 'assistant');
-    if (assistant.length > 0) {
-      return assistant[assistant.length - 1].content;
+// Returns the last assistant text and the user message that preceded it.
+function lastTurn(transcriptPath) {
+  const out = { assistant: null, user: null };
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) return out;
+
+  const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    let entry;
+    try {
+      entry = JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+    const text = textOf(entry);
+    if (!text) continue;
+    if (!out.assistant && entry.type === 'assistant') out.assistant = text;
+    else if (out.assistant && entry.type === 'user') {
+      out.user = text;
+      break;
     }
   }
-  return null;
+  return out;
 }
 
-function checkText(text) {
+function textOf(entry) {
+  const content = entry.message?.content;
+  if (typeof content === 'string') return content.trim() || null;
+  if (!Array.isArray(content)) return null;
+  const text = content
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('\n');
+  return text.trim() || null;
+}
+
+// Code and quoted examples are not prose. Blockquotes usually quote the user.
+function prosify(text) {
+  return text
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`]*`/g, '')
+    .split('\n')
+    .filter(l => !l.trimStart().startsWith('>'))
+    .join('\n');
+}
+
+function sentences(prose) {
+  return prose
+    .split(/\n{2,}|(?<=[.!?])\s+(?=[A-Z"'—])|\n(?=[-*|#])/)
+    .map(s => s.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
+function check(assistantText, userText) {
+  const prose = prosify(assistantText);
+  // A word the user just used is theirs. Echoing it back is not slop.
+  const userProse = (userText || '').toLowerCase();
   const violations = [];
-  const lower = text.toLowerCase();
+  const seen = new Set();
 
-  // Skip code blocks
-  const noCode = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`]+`/g, '');
-  const lowerNoCode = noCode.toLowerCase();
+  const add = (kind, match, sentence) => {
+    const key = `${kind}:${match}:${sentence}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    violations.push({ kind, match, sentence: clip(sentence) });
+  };
 
-  for (const word of BANNED_WORDS) {
-    const regex = new RegExp(`\\b${word}\\b`, 'i');
-    if (regex.test(lowerNoCode)) {
-      violations.push({ type: 'word', match: word });
+  const sets = P.hook_confidence || ['banned_words', 'banned_phrases'];
+
+  for (const sentence of sentences(prose)) {
+    if (sets.includes('banned_words')) {
+      for (const word of P.banned_words) {
+        if (userProse.includes(word)) continue;
+        if (new RegExp(`\\b${word}\\b`, 'i').test(sentence)) {
+          add('word', word, sentence);
+        }
+      }
+    }
+    if (sets.includes('banned_phrases')) {
+      for (const pattern of P.banned_phrases) {
+        const m = sentence.match(new RegExp(pattern, 'i'));
+        if (m) add('phrase', m[0], sentence);
+      }
+    }
+    if (sets.includes('structural')) {
+      for (const [pattern, desc] of P.structural || []) {
+        if (new RegExp(pattern, 'iu').test(sentence)) add('structure', desc, sentence);
+      }
     }
   }
 
-  for (const pattern of BANNED_PHRASES) {
-    const match = lowerNoCode.match(pattern);
-    if (match) {
-      violations.push({ type: 'phrase', match: match[0] });
-    }
-  }
-
+  violations.push(...bulletBolding(prose));
   return violations;
 }
+
+// Three or more bullets that each open with a bold phrase is the LinkedIn list.
+function bulletBolding(prose) {
+  const bullets = prose.split('\n').filter(l => /^\s*[-*]\s/.test(l));
+  if (bullets.length < 3) return [];
+  const bolded = bullets.filter(l => /^\s*[-*]\s+\*\*/.test(l));
+  if (bolded.length !== bullets.length) return [];
+  return [
+    {
+      kind: 'structure',
+      match: 'bold phrase opening every bullet',
+      sentence: clip(bullets[0]),
+    },
+  ];
+}
+
+function clip(s) {
+  return s.length > 100 ? s.slice(0, 97) + '...' : s;
+}
+
+module.exports = { check, sentences, prosify };

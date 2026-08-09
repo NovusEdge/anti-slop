@@ -132,3 +132,5 @@ Two unrelated facts are two comments.
 **Before:** "We're leveraging a retry mechanism here since sometimes the API call to the provisioning service will fail transiently, especially under load, and we don't want that to fail the whole operation."
 
 **After:** "The provisioning API fails transiently under load. Retry keeps one transient failure from aborting the operation."
+
+<!-- anti-slop: ignore-file (this file quotes the banned patterns) -->

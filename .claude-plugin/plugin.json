@@ -16,9 +16,5 @@
     "ai-detection",
     "prose",
     "linting"
-  ],
-  "skills": [
-    "skills/anti-slop"
-  ],
-  "hooks": "./hooks/hooks.json"
+  ]
 }

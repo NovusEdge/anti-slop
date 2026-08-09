@@ -119,3 +119,5 @@ If the text already complies, say so. Don't force changes onto clean prose.
 - Simplify creative or marketing copy where voice matters
 - Drop precision to shorten sentences
 - Enforce rules inside code fences or inline code spans
+
+<!-- anti-slop: ignore-file (this file quotes the banned patterns) -->

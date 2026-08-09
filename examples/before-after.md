@@ -134,3 +134,5 @@ Read it aloud. Would you say it to a colleague? If not, rewrite.
 
 "We're leveraging our robust infrastructure to facilitate seamless integration"
 → "We use our servers to sync data"
+
+<!-- anti-slop: ignore-file (this file quotes the banned patterns) -->

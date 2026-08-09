@@ -112,3 +112,5 @@ Words that signal a transition but add no meaning.
 ## The Hallway Test
 
 Beyond this list, the smell is the same everywhere. If a sentence would survive being said to a colleague in a hallway, it's fine. Ordinary verbs (has, uses, breaks, runs, needs, sends) beat elevated ones every time.
+
+<!-- anti-slop: ignore-file (this file quotes the banned patterns) -->

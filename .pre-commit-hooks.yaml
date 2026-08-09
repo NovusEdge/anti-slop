@@ -1,0 +1,6 @@
+- id: anti-slop
+  name: anti-slop
+  description: Check prose for AI-generated patterns and STE violations
+  entry: python3 tools/lint.py --check
+  language: system
+  types: [markdown]

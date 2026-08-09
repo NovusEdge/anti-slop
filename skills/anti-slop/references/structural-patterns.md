@@ -119,3 +119,5 @@ These patterns are mechanical enough to grep:
 7. **Meta phrases:** "to be clear", "it's worth noting", "the reality is"
 
 The semantic rules (one fact per sentence, concrete over abstract, constraint vs mechanism) need human judgment.
+
+<!-- anti-slop: ignore-file (this file quotes the banned patterns) -->

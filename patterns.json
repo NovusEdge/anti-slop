@@ -1,0 +1,63 @@
+{
+  "_comment": "hook_confidence marks which sets the Stop hook blocks on. The linter reports every set.",
+  "hook_confidence": ["banned_words", "banned_phrases", "structural"],
+
+  "banned_words": [
+    "delve", "tapestry", "symphony", "lifeblood", "beacon", "multifaceted",
+    "spearhead", "bolster", "garner", "illuminate", "showcase", "vibrant",
+    "meticulous", "holistic", "transformative", "profound",
+    "moreover", "furthermore", "additionally", "notably", "fundamentally",
+    "leverage", "foster", "facilitate", "seamless", "intricate", "pivotal",
+    "crucial", "cornerstone", "paradigm", "interplay", "elevate", "streamline"
+  ],
+
+  "_ambiguous_comment": "Real technical words too. The linter flags them; the hook does not block.",
+  "ambiguous_words": [
+    "harness", "landscape", "realm", "backbone", "robust", "comprehensive",
+    "vital", "nuanced", "compelling", "underscore", "unpack", "importantly"
+  ],
+
+  "banned_phrases": [
+    "load[- ]bearing",
+    "it'?s not (just |merely |simply |only )?[^,.]{2,60}, it'?s",
+    "that'?s not [^,.]{2,60}, that'?s",
+    "this isn'?t (about )?[^,.]{2,60}, it'?s",
+    "\\w+ isn'?t just [^,.]{2,60}, it'?s",
+    "less [^,.]{2,40}, more ",
+    "not because [^,.]{2,60}, but because",
+    "the real (question|issue|problem|point) (is n'?t|isn'?t)",
+    "not (merely|simply|just) [^,.]{2,60}, but",
+    "plays a (crucial|vital|key|important) role",
+    "stands as a testament",
+    "it'?s worth noting",
+    "at its core",
+    "the reality is",
+    "in today'?s fast[- ]paced",
+    "when it comes to",
+    "certainly!",
+    "let'?s dive in",
+    "great question",
+    "you'?re absolutely right",
+    "i hope this finds you well",
+    "north star",
+    "deep dive",
+    "game[- ]changer"
+  ],
+
+  "structural": [
+    ["^(two|three|four|\\d+) (things|reasons|points|takeaways|options|ways)\\b", "counting what follows"],
+    ["there are (two|three|four|\\d+) (things|reasons|points|takeaways|ways)\\b", "counting what follows"],
+    ["^(here'?s|here are) (the |a )?(two|three|four|\\d+)\\b", "counting what follows"],
+    ["^(to be clear|quick framing|a quick note|let me be clear|for context)\\b", "meta-commentary"],
+    ["^i don'?t want this (to be )?read as\\b", "meta-commentary"],
+    ["^that said,", "transition scaffolding"],
+    ["^#{1,6}\\s*[🌀-🫿☀-➿]", "emoji as section marker"]
+  ],
+
+  "ste_patterns": [
+    ["\\b(has|have|had) been \\w+ing\\b", "perfect progressive tense"],
+    ["\\b(has|have|had) been \\w+ed\\b", "perfect passive"],
+    ["\\bwill have \\w+ed\\b", "future perfect"],
+    ["^[A-Z]\\w+ing (the|a|an|\\w+)", "-ing sentence opener"]
+  ]
+}
