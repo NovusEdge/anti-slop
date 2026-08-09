@@ -44,19 +44,38 @@ Three layers, applied together:
 
 ## Hooks
 
-Three hooks run without being invoked.
+Two hooks run without being invoked. Neither blocks a turn.
 
 | Hook | When | What |
 |---|---|---|
 | `SessionStart` | startup, resume, clear, **compact** | Injects `hooks/rules.md` into context. The `compact` matcher restores the rules after a summarization drops them. |
-| `UserPromptSubmit` | every 10th prompt | Re-states a one-line reminder. A rule stated once at turn 1 stops steering by turn 40. |
-| `Stop` | end of each assistant turn | Scans the turn. On a violation it blocks and quotes the offending sentences. |
+| `UserPromptSubmit` | every prompt | Lints the previous assistant turn and reports the offending sentences. Every 10th prompt it also restates a one-line reminder, because a rule stated once at turn 1 stops steering by turn 40. |
 
 Change the reminder cadence with `ANTI_SLOP_REMIND_EVERY=5`. Turn the whole thing off with `/plugin disable anti-slop`.
 
-The `Stop` hook blocks only on the pattern sets listed in `hook_confidence` in `patterns.json`. `ambiguous_words` (`harness`, `landscape`, `robust`, `key`, …) stay out of it — they are real technical words, and blocking a turn over one teaches you to disable the plugin. The standalone linter still reports them.
+### Why the lint does not run on `Stop`
 
-It also skips a word you used in your own message. Echoing your vocabulary back is not slop.
+Claude Code appends the final assistant message to the transcript *after* the
+`Stop` hook fires. A `Stop` hook therefore reads the previous turn, never the
+one that triggered it. It reports on a message that already shipped, then blocks
+the next turn to complain about it.
+
+`UserPromptSubmit` reads the same previous turn, but the timing is honest: the
+report arrives before the next reply, where it can change something. Each turn is
+reported once, keyed by its transcript uuid.
+
+### False positives
+
+The hook reports only the pattern sets named in `hook_confidence` in
+`patterns.json`. Three exclusions keep it usable:
+
+- `ambiguous_words` (`harness`, `landscape`, `robust`, `key`, …) never fire. They
+  are real technical words. The standalone linter still reports them.
+- A word you used in your own message is skipped. Echoing your vocabulary back is
+  not slop.
+- Fenced code, inline code, blockquotes, and double-quoted spans on one line are
+  skipped. Quoting a banned word to discuss it is this plugin's most common false
+  positive, since banned words are its whole subject.
 
 ## Linter
 
@@ -113,8 +132,8 @@ anti-slop/
 ├── hooks/
 │   ├── hooks.json
 │   ├── rules.md           # text injected at SessionStart
-│   ├── inject.js          # SessionStart + UserPromptSubmit
-│   ├── lint-output.js     # Stop
+│   ├── inject.js          # the only hook entry point
+│   ├── check.js           # slop detection over a transcript
 │   └── selftest.js
 ├── tools/
 │   └── lint.py

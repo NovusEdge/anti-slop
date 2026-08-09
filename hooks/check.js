@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-// Stop hook. Reads the last assistant turn from the transcript and reports slop.
-// Exit 2 with stderr is the only channel Claude reads back; stdout is discarded.
+// Slop detection over a transcript. inject.js is the only caller.
 //
-// Blocks only on patterns.json sets named in hook_confidence. ambiguous_words
-// stay out of it: "harness", "landscape" and "key" are real technical words, and
-// blocking a turn over one trains the user to disable the plugin.
+// Blocks nothing. A Stop hook cannot lint the turn that triggers it: Claude Code
+// appends the final assistant message to the transcript after Stop fires, so a
+// Stop hook always reads the previous turn. The lint runs at UserPromptSubmit
+// instead, where the previous turn is on disk and stdout reaches the model.
+//
+// Reports only the patterns.json sets named in hook_confidence. ambiguous_words
+// stay out: "harness", "landscape" and "robust" are real technical words.
 
 const fs = require('fs');
 const path = require('path');
@@ -12,48 +15,10 @@ const path = require('path');
 const P = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'patterns.json'), 'utf8')
 );
-const MAX_REPORTED = 6;
 
-let input = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', c => (input += c));
-process.stdin.on('end', () => {
-  let violations;
-  try {
-    const data = JSON.parse(input);
-    // Without this guard the block-and-retry loop never terminates.
-    if (data.stop_hook_active) process.exit(0);
-
-    const turn = lastTurn(data.transcript_path);
-    if (!turn.assistant) process.exit(0);
-    violations = check(turn.assistant, turn.user);
-  } catch (e) {
-    process.exit(0);
-  }
-
-  if (violations.length === 0) process.exit(0);
-
-  const lines = violations.slice(0, MAX_REPORTED).map(v =>
-    `  [${v.kind}] ${v.match}\n      "${v.sentence}"`
-  );
-  const more =
-    violations.length > MAX_REPORTED
-      ? `\n  ...and ${violations.length - MAX_REPORTED} more`
-      : '';
-
-  process.stderr.write(
-    `anti-slop: ${violations.length} violation(s) in your last message.\n` +
-      lines.join('\n') +
-      more +
-      '\n\nRewrite only the sentences quoted above. Keep everything else as it is.\n' +
-      'Do not mention this correction in your reply.\n'
-  );
-  process.exit(2);
-});
-
-// Returns the last assistant text and the user message that preceded it.
+// Returns the last assistant text, its uuid, and the user message before it.
 function lastTurn(transcriptPath) {
-  const out = { assistant: null, user: null };
+  const out = { assistant: null, uuid: null, user: null };
   if (!transcriptPath || !fs.existsSync(transcriptPath)) return out;
 
   const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
@@ -66,8 +31,10 @@ function lastTurn(transcriptPath) {
     }
     const text = textOf(entry);
     if (!text) continue;
-    if (!out.assistant && entry.type === 'assistant') out.assistant = text;
-    else if (out.assistant && entry.type === 'user') {
+    if (!out.assistant && entry.type === 'assistant') {
+      out.assistant = text;
+      out.uuid = entry.uuid || null;
+    } else if (out.assistant && entry.type === 'user') {
       out.user = text;
       break;
     }
@@ -86,11 +53,15 @@ function textOf(entry) {
   return text.trim() || null;
 }
 
-// Code and quoted examples are not prose. Blockquotes usually quote the user.
+// Code, quoted examples and blockquotes are not the writer's own prose. A
+// double-quoted span is how you cite slop, and this plugin's own subject is
+// banned words, so flagging the citation is its most common false positive.
+// The span must stay on one line; a quote that spans lines is usually prose.
 function prosify(text) {
   return text
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`[^`]*`/g, '')
+    .replace(/"[^"\n]*"/g, '""')
     .split('\n')
     .filter(l => !l.trimStart().startsWith('>'))
     .join('\n');
@@ -164,4 +135,4 @@ function clip(s) {
   return s.length > 100 ? s.slice(0, 97) + '...' : s;
 }
 
-module.exports = { check, sentences, prosify };
+module.exports = { check, lastTurn, sentences, prosify };

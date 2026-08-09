@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // node hooks/selftest.js
 const assert = require('assert');
-const { check } = require('./lint-output.js');
+const { check } = require('./check.js');
 
 const hit = (text, user) => check(text, user).length > 0;
 
@@ -24,6 +24,12 @@ assert.ok(!hit('A robust retry covers the landscape.'), 'ambiguous words blocked
 assert.ok(!hit('Use `leverage` as the example word.'), 'inline code not skipped');
 assert.ok(!hit('```\nWe leverage it.\n```'), 'fence not skipped');
 assert.ok(!hit('> we leverage the cache'), 'blockquote not skipped');
+assert.ok(
+  !hit('If you ask "should we leverage the cache?", the reply may repeat it.'),
+  'double-quoted citation not skipped'
+);
+// A quote must close on its own line to count as a citation.
+assert.ok(hit('He said "we leverage\nthe cache" yesterday.'), 'multiline quote skipped');
 
 // A word the user used is not the assistant's slop.
 assert.ok(
