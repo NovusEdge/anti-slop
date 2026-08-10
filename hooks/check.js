@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Slop detection over a transcript. inject.js is the only caller.
 //
-// Blocks nothing. A Stop hook cannot lint the turn that triggers it: Claude Code
-// appends the final assistant message to the transcript after Stop fires, so a
-// Stop hook always reads the previous turn. The lint runs at UserPromptSubmit
-// instead, where the previous turn is on disk and stdout reaches the model.
+// Blocks nothing. A Stop hook can block and send the model back to rewrite, but
+// the rewrite ships as a second message for one prompt. The lint runs at
+// PostToolUse and UserPromptSubmit instead. Both write additionalContext, which
+// steers the next words the model writes and costs no extra generation.
 //
 // Reports only the patterns.json sets named in hook_confidence. ambiguous_words
 // stay out: "harness", "landscape" and "robust" are real technical words.
@@ -47,7 +47,7 @@ function lastTurn(transcriptPath) {
   const out = { assistant: null, uuid: null, user: null };
   if (!transcriptPath || !fs.existsSync(transcriptPath)) return out;
 
-  const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+  const lines = readTail(transcriptPath).trim().split('\n');
   const texts = [];
   for (let i = lines.length - 1; i >= 0; i--) {
     let entry;
@@ -69,6 +69,24 @@ function lastTurn(transcriptPath) {
   }
   out.assistant = texts.join('\n\n') || null;
   return out;
+}
+
+// PostToolUse fires on every tool call, so a full read of a long transcript costs
+// megabytes per call. One turn fits in the tail. The first line of the tail is cut
+// mid-record; lastTurn drops it on the JSON.parse.
+const TAIL_BYTES = 256 * 1024;
+
+function readTail(file) {
+  const size = fs.statSync(file).size;
+  if (size <= TAIL_BYTES) return fs.readFileSync(file, 'utf8');
+  const fd = fs.openSync(file, 'r');
+  try {
+    const buf = Buffer.alloc(TAIL_BYTES);
+    fs.readSync(fd, buf, 0, TAIL_BYTES, size - TAIL_BYTES);
+    return buf.toString('utf8');
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 // A tool result is a user entry by transcript type only. It carries no prose and

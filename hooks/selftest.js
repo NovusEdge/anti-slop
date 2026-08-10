@@ -170,4 +170,36 @@ assert.ok(!found[0].sentence.includes('lock is fine'), 'sentence split failed');
   assert.strictEqual(check(turn.assistant, turn.user).length, 1, 'mid-turn slop missed');
 }
 
+// The PostToolUse path speaks once per finding per turn. A repeat at every tool
+// call is what makes an injected reminder get ignored.
+{
+  const { execFileSync } = require('child_process');
+  const file = path.join(os.tmpdir(), 'anti-slop-selftest-mid.jsonl');
+  const session = 'selftest-mid';
+  const state = path.join(os.tmpdir(), `anti-slop-${session}.json`);
+  const line = (type, text) =>
+    JSON.stringify({ type, uuid: `u-${text.slice(0, 6)}`, message: { content: [{ type: 'text', text }] } });
+  fs.writeFileSync(
+    file,
+    [line('user', 'fix the parser'), line('assistant', 'We leverage the cache first.')].join('\n')
+  );
+  const run = event =>
+    execFileSync(process.execPath, [path.join(__dirname, 'inject.js')], {
+      input: JSON.stringify({ hook_event_name: event, session_id: session, transcript_path: file }),
+      encoding: 'utf8',
+    });
+
+  try {
+    const first = JSON.parse(run('PostToolUse'));
+    assert.strictEqual(first.hookSpecificOutput.hookEventName, 'PostToolUse');
+    assert.match(first.hookSpecificOutput.additionalContext, /leverage/, 'mid-turn finding missed');
+    assert.strictEqual(run('PostToolUse'), '', 'mid-turn finding repeated');
+    // The same finding must not arrive twice through two different hooks.
+    assert.ok(!/leverage/.test(run('UserPromptSubmit')), 'finding reported twice');
+  } finally {
+    fs.unlinkSync(file);
+    try { fs.unlinkSync(state); } catch { /* never written */ }
+  }
+}
+
 console.log('selftest ok');

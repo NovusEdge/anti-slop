@@ -1,7 +1,7 @@
 {
   "name": "anti-slop",
   "displayName": "anti-slop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Enforce clear technical prose — STE grammar, no AI buzzwords, no LinkedIn cadence",
   "author": {
     "name": "NovusEdge"

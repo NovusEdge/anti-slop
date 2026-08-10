@@ -1,13 +1,17 @@
 #!/usr/bin/env node
-// SessionStart and UserPromptSubmit hook. Both events add stdout to the context.
+// SessionStart, SubagentStart, PostToolUse and UserPromptSubmit hook. All four
+// reach the model. Any other event exits silently.
 //
 // SessionStart fires on startup, resume, clear, and compact. The compact matcher
 // is what restores the rules after a summarization drops them.
+//
+// PostToolUse reports a finding mid-turn, next to the tool result.
 //
 // UserPromptSubmit does two jobs. It lints the previous assistant turn, which is
 // on disk by now, and it restates a one-line reminder every REMIND_EVERY
 // prompts, because a rule stated once at turn 1 stops steering by turn 40.
 
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -42,16 +46,19 @@ process.stdin.on('end', () => {
     process.exit(0);
   }
 
-  // Stop carries last_assistant_message, so the turn that triggered the hook is
-  // readable here. A block sends the model back to rewrite before the message
-  // ships. systemMessage reaches the user only, so an advisory tier is invisible
-  // to the model and changes nothing.
-  if (data.hook_event_name === 'Stop') {
-    stopGate(data);
-    return;
+  if (data.hook_event_name === 'PostToolUse') {
+    try {
+      midTurn(data);
+    } catch {
+      /* a malformed transcript must not disturb the tool result */
+    }
+    process.exit(0);
   }
 
   if (data.hook_event_name !== 'UserPromptSubmit') {
+    if (!['SessionStart', 'SubagentStart'].includes(data.hook_event_name)) {
+      process.exit(0);
+    }
     try {
       // The linter's ignore marker belongs to the file, not to the context.
       const rules = fs
@@ -75,33 +82,54 @@ process.stdin.on('end', () => {
   if (out.length) console.log(out.join('\n'));
 });
 
-// One retry only. A phrasing the regex cannot love must not trap the turn.
-function stopGate(data) {
-  if (data.stop_hook_active) return process.exit(0);
-  const message = data.last_assistant_message;
-  if (!message) return process.exit(0);
+// PostToolUse writes additionalContext next to the tool result, so a finding
+// reaches the model while the turn is still open and the rest of the prose is
+// still unwritten. Nothing blocks and no second message ships. The final message
+// of a turn arrives after the last tool call, so UserPromptSubmit still has work.
+//
+// Soft findings stay out. Length is not measurable on half a turn.
+function midTurn(data) {
+  const turn = lastTurn(data.transcript_path);
+  if (!turn.assistant) return;
 
-  // A soft finding reports on the next turn and never blocks. Length is soft:
-  // a report the reader asked for is allowed to be long.
-  const violations = check(message, '').filter(v => !v.soft);
-  if (!violations.length) return process.exit(0);
+  const state = loadState(data.session_id);
+  const turnKey = turnId(turn);
+  const seen = turnKey && state.turnKey === turnKey ? state.seen || [] : [];
 
-  const lines = violations
-    .slice(0, MAX_REPORTED)
-    .map(v => `  ${DIRECTIVE[v.kind] || DIRECTIVE.default}: ${v.match} — "${v.sentence}"`);
+  const fresh = check(turn.assistant, turn.user)
+    .filter(v => !v.soft)
+    .filter(v => !seen.includes(key(v)));
+  if (!fresh.length) return;
+
+  const shown = fresh.slice(0, MAX_REPORTED);
+  saveState(data.session_id, {
+    ...state,
+    turnKey,
+    seen: [...seen, ...shown.map(key)].slice(-40),
+  });
 
   process.stdout.write(
     JSON.stringify({
-      decision: 'block',
-      reason:
-        'Your message breaks anti-slop rules:\n' +
-        lines.join('\n') +
-        '\nRewrite the offending sentences so each states the thing directly, ' +
-        'then reply with the corrected message. Do not narrate the correction.',
+      hookSpecificOutput: {
+        hookEventName: 'PostToolUse',
+        additionalContext: [
+          'ANTI-SLOP: your prose earlier in this turn breaks the rules below.',
+          ...shown.map(v => `  ${DIRECTIVE[v.kind] || DIRECTIVE.default}: ${v.match} — "${v.sentence}"`),
+          'Write the rest of this turn without them. Do not rewrite the earlier ' +
+            'text and do not mention this notice.',
+        ].join('\n'),
+      },
     })
   );
-  process.exit(0);
 }
+
+const key = v => `${v.kind}:${v.match}:${v.sentence}`;
+
+// Both hooks derive the turn from the same walk, so the opening user prompt is
+// the one identifier they agree on. prompt_id is not usable here: at
+// UserPromptSubmit it names the prompt that just arrived, not the turn on disk.
+const turnId = turn =>
+  turn.user ? crypto.createHash('sha1').update(turn.user).digest('hex').slice(0, 12) : null;
 
 function report(data) {
   const state = loadState(data.session_id);
@@ -111,7 +139,11 @@ function report(data) {
   if (turn.uuid && turn.uuid === state.lastUuid) return [];
   saveState(data.session_id, { ...state, lastUuid: turn.uuid });
 
-  const violations = check(turn.assistant, turn.user);
+  // A finding the PostToolUse hook already delivered stays out. The model acted
+  // on it mid-turn; a repeat reads as a second offence.
+  const turnKey = turnId(turn);
+  const seen = turnKey && state.turnKey === turnKey ? state.seen || [] : [];
+  const violations = check(turn.assistant, turn.user).filter(v => !seen.includes(key(v)));
   if (!violations.length) return [];
 
   // Grouped under a named directive per kind. A flat "anti-slop found 3

@@ -27,7 +27,7 @@ Restart Claude Code after any of them.
 
 ## What it does
 
-Five layers, applied together:
+Six layers, applied together:
 
 1. **STE grammar** — One fact per sentence, active voice, simple tenses, short sentences, no dropped articles. Based on ASD-STE100.
 
@@ -38,6 +38,8 @@ Five layers, applied together:
 4. **No sycophancy** — No opening flattery (`great question`, `good catch`), no praise for the reader's idea, no apology inflation, no short exclamations. A correction is a claim: verify it, then state the corrected fact alone. See "The capitulation check" below.
 
 5. **No servile closer** — No `say the word and I'll`, `just let me know`, `happy to`, `hope this helps`. Name what is still available and stop. A real question gets asked plainly when the answer changes the work.
+
+6. **The full choice** — A question to the reader carries four options where four real ones exist. Two read as a false pick. `AskUserQuestion` caps at four and adds "Other" itself. This one rides in the injected rules and no linter checks it.
 
 ## Usage
 
@@ -90,8 +92,8 @@ Four hooks run without being invoked.
 |---|---|---|
 | `SessionStart` | startup, resume, clear, **compact** | Injects `hooks/rules.md` into context. The `compact` matcher restores the rules after a summarization drops them. |
 | `SubagentStart` | every subagent and workflow agent | Injects the same rules. A subagent gets a fresh context, so nothing from the parent session reaches it. |
-| `Stop` | end of every turn | **Blocks** on a violation and sends the model back to rewrite before the message ships. Retries once, then gives up. |
-| `UserPromptSubmit` | every prompt | Reports what the block let through, plus the soft findings that never block. Every 10th prompt it restates a one-line reminder, because a rule stated once at turn 1 stops steering by turn 40. |
+| `PostToolUse` | every tool call | Lints the prose written so far in the open turn and reports a finding next to the tool result. The model writes the rest of the turn without it. Each finding is reported once per turn. |
+| `UserPromptSubmit` | every prompt | Lints the previous turn and names what the `PostToolUse` pass did not reach. Every 10th prompt it restates a one-line reminder, because a rule stated once at turn 1 stops steering by turn 40. |
 
 Findings arrive grouped under the rule they broke, sycophancy first:
 
@@ -107,22 +109,31 @@ never drops it behind a word-list hit.
 
 Change the reminder cadence with `ANTI_SLOP_REMIND_EVERY=5`. Turn the whole thing off with `/plugin disable anti-slop`.
 
-### Why the block runs on `Stop`
+### Why nothing blocks
 
-A `Stop` hook receives `last_assistant_message`, so it reads the turn that
-triggered it. Returning `{"decision": "block", "reason": ...}` sends the model
-back to rewrite before the message reaches the reader. `stop_hook_active` guards
-the retry, so a phrasing the regex cannot love costs one extra pass and never
-traps the turn.
+A `Stop` hook can return `decision: "block"` and send the model back to rewrite.
+The rewrite arrives as a second message for one prompt. `Stop` also accepts
+`hookSpecificOutput.additionalContext`, which the
+[hook docs](https://code.claude.com/docs/en/hooks) describe as feedback where
+"the conversation continues so Claude can act on it", so that form costs a second
+message too. The plugin used to block on `Stop` and dropped it for that reason.
 
-The other model-visible channel is `additionalContext` at `UserPromptSubmit`,
-which carries what survived the block and the soft findings. `systemMessage`
-renders for the reader and never enters the model's context, so a rule written
-that way changes nothing.
+`PostToolUse` and `UserPromptSubmit` carry `additionalContext` at a point where
+the model is about to write anyway. A finding steers the next words and adds no
+generation. `PostToolUse` places it next to the tool result, so prose written
+before a tool call gets corrected inside the same turn. The closing message of a
+turn arrives after the last tool call, which is the part only
+`UserPromptSubmit` can reach.
+
+`systemMessage` renders for the reader and never enters the model's context, so a
+rule written that way changes nothing. `MessageDisplay` can rewrite what the
+terminal shows, and the docs state the transcript and the model keep the
+original, so it cannot enforce anything either.
 
 Soft findings never block. A corrective list (`use tabs, not spaces`) and an
 em-dash pair are legitimate often enough that a hard stop on them would train the
-model to discount the channel.
+model to discount the channel. The mid-turn pass drops them: prose length is not
+measurable on half a turn.
 
 ### The capitulation check
 

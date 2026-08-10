@@ -12,7 +12,7 @@
         ]
       }
     ],
-    "Stop": [
+    "SubagentStart": [
       {
         "hooks": [
           {
@@ -23,7 +23,7 @@
         ]
       }
     ],
-    "SubagentStart": [
+    "PostToolUse": [
       {
         "hooks": [
           {
