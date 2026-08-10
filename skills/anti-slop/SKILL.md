@@ -8,11 +8,12 @@ version: 0.1.0
 
 A writing discipline for technical prose that humans have to read: code comments, docstrings, commit bodies, PR descriptions, design docs, READMEs.
 
-Three layers, applied together:
+Four layers, applied together:
 
 1. **STE grammar** — Simplified Technical English rules from ASD-STE100. One fact per sentence, active voice, simple tenses, short sentences, no dropped articles.
 2. **Banned vocabulary** — Words and phrases that mark text as LLM-generated on sight. Reach for the ordinary word.
 3. **Structural hygiene** — No contrast constructions, rhetorical questions, LinkedIn cadence, or meta-commentary about the text itself.
+4. **No sycophancy** — No flattery, no reflexive agreement, no apology inflation, no servile closer. Verify a correction before you accept it.
 
 ## When to Use
 
@@ -72,6 +73,21 @@ Delete the negated half. State the real thing on its own.
 - Closing aphorism restating the paragraph as a slogan
 - Counting what follows ("Three things...", "Two reasons...")
 
+**Sycophancy** — Flattery, reflexive agreement, apology inflation:
+- "Great question", "Good catch", "You're absolutely right", "That's a clean design"
+- "I apologize for the confusion", "Sorry about that", "Thanks for catching that"
+- "Absolutely!", "Perfect!", exclamation marks in technical prose
+- "Both approaches are valid" where a recommendation belongs
+
+A correction is a claim. Verify it, then state the corrected fact on its own. Say so with evidence when the correction is wrong. See `references/sycophancy.md`.
+
+**Servile closer** — A sign-off that hands the decision back instead of ending the message:
+- "Say the word and I'll ...", "Just let me know"
+- "Happy to ...", "I'd be glad to ...", "Feel free to ..."
+- "Hope this helps", "Shall I proceed?", "Does that work for you?"
+
+State what remains available and stop. The reader knows they can reply. Ask a real question only when the answer changes the work and no default is defensible. Then ask it plainly, on its own line.
+
 **Meta-commentary:**
 - "To be clear", "Quick framing first"
 - "I don't want this read as..."
@@ -83,7 +99,7 @@ Delete the negated half. State the real thing on its own.
 - Bolding a phrase in every bullet
 - Emoji as section markers
 
-See `references/structural-patterns.md` for detection heuristics.
+See `references/structural-patterns.md` for detection heuristics and `references/sycophancy.md` for the judgment half.
 
 ## Process
 

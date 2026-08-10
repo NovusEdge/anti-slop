@@ -1,6 +1,13 @@
 - id: anti-slop
   name: anti-slop
   description: Check prose for AI-generated patterns and STE violations
-  entry: python3 tools/lint.py --check
-  language: system
+  entry: tools/lint.py --check
+  language: script
   types: [markdown]
+
+- id: anti-slop-commit-msg
+  name: anti-slop (commit message)
+  description: Check the commit message for AI-generated patterns and STE violations
+  entry: tools/lint.py --check --strip-comments
+  language: script
+  stages: [commit-msg]

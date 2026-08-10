@@ -21,11 +21,10 @@ else
 fi
 
 echo "Adding marketplace from $SOURCE ..."
-if claude plugin marketplace list 2>/dev/null | grep -q '^\s*.\s*anti-slop$'; then
-    claude plugin marketplace update anti-slop
-else
-    claude plugin marketplace add "$SOURCE" --scope user
-fi
+# `add` fails when the marketplace is already registered. Grepping the list
+# output instead ties the installer to a format that is not a contract.
+claude plugin marketplace add "$SOURCE" --scope user 2>/dev/null \
+    || claude plugin marketplace update anti-slop
 
 echo "Installing plugin ..."
 claude plugin uninstall anti-slop@anti-slop --scope user >/dev/null 2>&1 || true
@@ -36,7 +35,7 @@ cat <<'EOF'
 Installed. Restart Claude Code, then:
 
   /anti-slop:anti-slop        invoke the skill
-  /plugin disable anti-slop   turn the Stop-hook linter off
+  /plugin disable anti-slop   turn the hooks off
 
 Standalone linter (no Claude Code needed):
 

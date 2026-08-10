@@ -14,12 +14,20 @@ const path = require('path');
 const { check, lastTurn } = require('./check.js');
 
 const REMIND_EVERY = Number(process.env.ANTI_SLOP_REMIND_EVERY || 10);
-const MAX_REPORTED = 5;
+const MAX_REPORTED = 8;
 const RULES = path.join(__dirname, 'rules.md');
+const DIRECTIVE = {
+  sycophancy: 'ANTI-SYCOPHANCY DIRECTIVE',
+  word: 'BANNED VOCABULARY RULE',
+  phrase: 'BANNED CONSTRUCTION RULE',
+  structure: 'STRUCTURAL SLOP RULE',
+  default: 'ANTI-SLOP RULE',
+};
 const SHORT =
-  'anti-slop is active: no contrast constructions ("it\'s not X, it\'s Y"), ' +
-  'no LLM vocabulary (delve, leverage, crucial, "load-bearing"), ' +
-  'no LinkedIn cadence, active voice, one fact per sentence.';
+  'ANTI-SLOP DIRECTIVE, still in force: no contrast constructions ' +
+  '("it\'s not X, it\'s Y"), no LLM vocabulary (delve, leverage, crucial, ' +
+  '"load-bearing"), no LinkedIn cadence, no flattery and no apologies, ' +
+  'no servile closer, active voice, one fact per sentence.';
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -34,7 +42,12 @@ process.stdin.on('end', () => {
 
   if (data.hook_event_name !== 'UserPromptSubmit') {
     try {
-      console.log(fs.readFileSync(RULES, 'utf8').trim());
+      // The linter's ignore marker belongs to the file, not to the context.
+      const rules = fs
+        .readFileSync(RULES, 'utf8')
+        .replace(/^<!-- anti-slop:.*$/gm, '')
+        .trim();
+      console.log(rules);
     } catch {
       console.log(SHORT);
     }
@@ -62,20 +75,32 @@ function report(data) {
   const violations = check(turn.assistant, turn.user);
   if (!violations.length) return [];
 
-  const lines = violations
-    .slice(0, MAX_REPORTED)
-    .map(v => `  [${v.kind}] ${v.match} — "${v.sentence}"`);
-  const more =
-    violations.length > MAX_REPORTED
-      ? `  ...and ${violations.length - MAX_REPORTED} more`
-      : null;
-
-  return [
-    `anti-slop found ${violations.length} violation(s) in your previous message:`,
-    ...lines,
-    ...(more ? [more] : []),
-    'Do not repeat them. Do not mention this notice or revisit the previous message.',
-  ];
+  // Grouped under a named directive per kind. A flat "anti-slop found 3
+  // violations" reads as a log line and gets skimmed; the rule name tells the
+  // model which rule it broke.
+  // Sycophancy first. Truncation used to drop it behind a word-list hit, and it
+  // is the finding the model most needs to see.
+  const rank = { sycophancy: 0, phrase: 1, structure: 2, word: 3 };
+  const ordered = [...violations].sort(
+    (a, b) => (rank[a.kind] ?? 9) - (rank[b.kind] ?? 9)
+  );
+  const shown = ordered.slice(0, MAX_REPORTED);
+  const out = [];
+  for (const kind of [...new Set(shown.map(v => v.kind))]) {
+    out.push(`${DIRECTIVE[kind] || DIRECTIVE.default} VIOLATED in your previous message:`);
+    for (const v of shown.filter(v => v.kind === kind)) {
+      out.push(`  ${v.match} — "${v.sentence}"`);
+    }
+  }
+  if (violations.length > MAX_REPORTED) {
+    out.push(`  ...and ${violations.length - MAX_REPORTED} more`);
+  }
+  out.push(
+    'These are hard rules. Rewrite the offending construction in every reply ' +
+      'from now on. Do not acknowledge this notice and do not revisit the ' +
+      'previous message.'
+  );
+  return out;
 }
 
 const stateFile = id => path.join(os.tmpdir(), `anti-slop-${id}.json`);

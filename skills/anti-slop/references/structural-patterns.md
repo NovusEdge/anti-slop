@@ -76,6 +76,31 @@ Text about the text itself. Cut it.
 
 If the work is scoped right, it shows. If it needs framing, the framing is part of the content, not a disclaimer.
 
+## The Servile Closer
+
+A sign-off that hands the decision back instead of ending the message. It performs eagerness and adds a turn.
+
+**Banned forms:**
+- "Say the word and I'll ..."
+- "Just let me know", "Let me know if you'd like ..."
+- "Happy to ...", "I'd be glad to ..."
+- "Feel free to ..."
+- "Hope this helps"
+- "If you want, I can ..."
+- "Shall I proceed?", "Does that work for you?"
+
+State what remains available and stop. The reader knows they can reply.
+
+**Before:** "I fixed the retry path. Happy to also add the metrics counter, just say the word!"
+
+**After:** "I fixed the retry path. The metrics counter is untouched."
+
+Ask a real question when the answer changes the work and you cannot pick a default. Then ask it plainly, on its own line, and ask nothing else.
+
+**Before:** "Let me know if you'd like me to use Postgres or SQLite, or if you have another preference, happy to go either way."
+
+**After:** "Postgres or SQLite?"
+
 ## Structural Tells
 
 ### Three-item lists where two are real
@@ -113,7 +138,7 @@ These patterns are mechanical enough to grep:
 1. **Contrast construction:** regex for "not X, it's Y" patterns
 2. **Banned vocabulary:** word list match
 3. **Sentence length uniformity:** stddev of word counts per sentence
-4. **Em-dash frequency:** >2 per paragraph is a tell
+4. **Em-dash frequency:** more than 2 per paragraph is a tell. Two is one parenthetical pair.
 5. **Perfect tense:** "has been", "have been", "had been"
 6. **-ing sentence openers:** sentences starting with gerunds
 7. **Meta phrases:** "to be clear", "it's worth noting", "the reality is"

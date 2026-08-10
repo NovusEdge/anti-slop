@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: linter selftest
+        run: python3 tools/lint.py --selftest
+
+      - name: hook selftest
+        run: node hooks/selftest.js
+
+      # README.md is the only doc without an ignore-file marker. The rest quote
+      # the banned list, so linting them checks nothing.
+      - name: lint own docs
+        run: python3 tools/lint.py --check README.md

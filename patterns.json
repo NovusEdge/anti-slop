@@ -1,6 +1,13 @@
 {
   "_comment": "hook_confidence marks which sets the Stop hook blocks on. The linter reports every set.",
-  "hook_confidence": ["banned_words", "banned_phrases", "structural"],
+  "hook_confidence": ["banned_words", "banned_phrases", "sycophancy", "sycophancy_tone", "structural"],
+
+  "_phrase_sets_comment": "set -> {kind, tools}. An entry is a bare pattern or a [pattern, description] pair; the description replaces the matched text in the report, which matters when the match is two characters of punctuation.",
+  "_phrase_sets": {
+    "banned_phrases": { "kind": "phrase", "tools": ["lint", "hook"] },
+    "sycophancy": { "kind": "sycophancy", "tools": ["lint", "hook"] },
+    "sycophancy_tone": { "kind": "sycophancy", "tools": ["hook"] }
+  },
 
   "banned_words": [
     "delve", "tapestry", "symphony", "lifeblood", "beacon", "multifaceted",
@@ -8,25 +15,39 @@
     "meticulous", "holistic", "transformative", "profound",
     "moreover", "furthermore", "additionally", "notably", "fundamentally",
     "leverage", "foster", "facilitate", "seamless", "intricate", "pivotal",
-    "crucial", "cornerstone", "paradigm", "interplay", "elevate", "streamline"
+    "crucial", "cornerstone", "paradigm", "interplay", "streamline"
   ],
 
   "_ambiguous_comment": "Real technical words too. The linter flags them; the hook does not block.",
   "ambiguous_words": [
     "harness", "landscape", "realm", "backbone", "robust", "comprehensive",
-    "vital", "nuanced", "compelling", "underscore", "unpack", "importantly"
+    "vital", "nuanced", "compelling", "underscore", "unpack", "importantly",
+    "elevate"
   ],
 
+  "_phrase_comment": "Apostrophes are straight. Both tools map the curly forms before matching. The contrast joins accept a semicolon, which is how the construction escapes a comma-only pattern.",
   "banned_phrases": [
     "load[- ]bearing",
-    "it'?s not (just |merely |simply |only )?[^,.]{2,60}, it'?s",
-    "that'?s not [^,.]{2,60}, that'?s",
-    "this isn'?t (about )?[^,.]{2,60}, it'?s",
-    "\\w+ isn'?t just [^,.]{2,60}, it'?s",
+    "it'?s not (just |merely |simply |only )?[^,.;]{2,60}[,;] it'?s",
+    "that'?s not [^,.;]{2,60}[,;] that'?s",
+    "that'?s (a|an|the) [^,.;]{2,40}, not (a|an|the) ",
+    "this isn'?t (about )?[^,.;]{2,60}[,;] it'?s",
+    "\\w+ isn'?t just (a|an|the) ",
+    "\\w+ isn'?t just [^,.;]{2,60}[,;] it'?s",
     "less [^,.]{2,40}, more ",
-    "not because [^,.]{2,60}, but because",
+    "not because [^,.;]{2,60}, but because",
     "the real (question|issue|problem|point) (is n'?t|isn'?t)",
-    "not (merely|simply|just) [^,.]{2,60}, but",
+    "not (merely|simply|just) [^,.;]{2,60}, but",
+    "at the end of the day",
+    "stands as (a|an|the) ",
+    "underscores the importance",
+    "marks a shift",
+    "(^|[.!?] )in summary[,:]",
+    "(^|[.!?] )overall, ",
+    "battle[- ]tested",
+    "blazing[- ]fast",
+    "don'?t hesitate to",
+    "let me know your thoughts",
     "plays a (crucial|vital|key|important) role",
     "stands as a testament",
     "it'?s worth noting",
@@ -34,14 +55,92 @@
     "the reality is",
     "in today'?s fast[- ]paced",
     "when it comes to",
-    "certainly!",
+    "say the word",
+    "just let me know",
+    "let me know if you'?(d|ll| would| will)",
+    "let me know (if|how|what|which|whether) you",
+    "let me know and i'?(ll| can)",
+    "i'?d be (happy|glad) to",
+    "happy to (help|assist|dig|take|do|add|walk|expand|adjust|elaborate|clarify|explore)",
+    "feel free to",
+    "hope (this|that) helps",
+    "if you'?d (like|prefer),? i (can|could|'?ll)",
+    "if you want,? i (can|could|'?ll)",
+    "shall i (proceed|continue|go ahead)",
+    "does that (work|sound good|make sense) for you",
+    "how (would you like|do you want) (me )?to proceed",
     "let'?s dive in",
-    "great question",
-    "you'?re absolutely right",
     "i hope this finds you well",
     "north star",
     "deep dive",
     "game[- ]changer"
+  ],
+
+  "_sycophancy_comment": "Flattery, reflexive agreement, apology inflation. The regexes catch the surface. The judgment half lives in skills/anti-slop/references/sycophancy.md, where no linter reaches.",
+  "sycophancy": [
+    "(^|[.!?] )(great|good|excellent|interesting|fair|nice|smart) (question|point|call|catch|idea|observation|suggestion|thinking)\\b",
+    "your (approach|design|idea|point|instinct|solution|refactor|reading|question|concern) (is|was) (a )?(great|good|right|clean|correct|valid|fair|solid|elegant|smart)",
+    "(that'?s|this is|that is) (a|an) (great|good|excellent|fair|valid|interesting|nice|smart|clever|clean|elegant|solid) (point|question|call|catch|idea|observation|suggestion|approach|design|solution|refactor|way|instinct)\\b",
+    "you make (a|an) (great|good|valid|fair|excellent) point",
+    "(^|[.!?] )(good|great|nice) (catch|call)\\b",
+    "you'?(re| are) (absolutely|completely|exactly|totally|quite|so) (right|correct)\\b",
+    "you'?(re| are) (right|correct)[,.!]? (and )?(i'?ll|i will|let me|i'?ve|i have|good|great|thanks|my)",
+    "you'?(re| are) right to (push|question|ask|call|be|want|worry)",
+    "(^|[.!?] )(spot on|sounds good|fair enough|makes sense|well spotted)[.!]",
+    "(^|[.!?] )that makes (perfect )?sense[.!]",
+    "could ?n'?t agree more",
+    "(great|excellent|nice|solid) work\\b",
+    "i appreciate (you|your) (pointing|catching|raising|flagging|bringing)",
+    "thanks for (catching|pointing|flagging|raising|the correction)",
+    "i apologi[sz]e for (the|any|my) (confusion|inconvenience|oversight|mistake|error)",
+    "sorry (about|for) (that|the confusion|the mistake|the oversight)",
+    "(^|[.!?] )my (mistake|apologies|bad)[.,!]",
+    "i should have (caught|noticed|realized) (that|it|this)\\b"
+  ],
+
+  "_tone_comment": "Hook only. These fire on committed markdown too often to gate a commit: a README writes `Run make install!` and `Of course, the cache can be disabled`. In a chat reply they are the enthusiasm register.",
+  "sycophancy_tone": [
+    ["(^|[.!?] )(absolutely|certainly|definitely|exactly|indeed|perfect|excellent|awesome|wonderful|fantastic|brilliant)[!.,]", "enthusiasm opener"],
+    ["(^|[.!?] )(sure|of course)!", "enthusiasm opener"],
+    ["^.{0,32}!(\\s|$)", "exclamation mark in technical prose"]
+  ],
+
+  "_capitulation_comment": "Reflexive agreement needs both sides of the turn, so only the hook runs this. The rule fires when the user pushed back, the reply opens by agreeing, and the reply cites nothing. An agreement backed by a file, a line, a command or a number passes.",
+  "pushback_markers": [
+    "(^|[.!?] )(no|nope|nah)\\b",
+    "that'?s (not|wrong|incorrect|false)",
+    "\\b(wrong|incorrect|mistaken)\\b",
+    "actually[, ]+(the|it|its|it'?s|that|this|no|you|we|i )",
+    "you (missed|forgot|didn'?t|failed to|got .{0,20}wrong)",
+    "are you sure",
+    "why (did|would) you",
+    "isn'?t (it|that|this)",
+    "doesn'?t (that|it|this)",
+    "i (think|believe) you'?(re| are)",
+    "i disagree",
+    "that doesn'?t (work|make sense|look right)",
+    "\\bbut\\b.{0,60}\\?"
+  ],
+  "agreement_markers": [
+    "you'?(re| are) (absolutely |completely |exactly |totally |quite |so )?(right|correct)",
+    "(^|[.!?] )(yes|yep|yeah|correct|agreed|true|right)\\b",
+    "(^|[.!?] )(indeed|fair enough)\\b",
+    "(good|great|nice|fair) (catch|call|point)",
+    "that'?s (right|correct|true|fair)",
+    "my (mistake|apologies|bad)\\b",
+    "i (was|got that|got it) wrong",
+    "i apologi[sz]e",
+    "i should have (caught|noticed|checked|realized)"
+  ],
+  "evidence_markers": [
+    "[\\w/.-]+\\.\\w{1,5}:\\d+",
+    "\\b[\\w-]+\\.(js|ts|jsx|tsx|py|go|rs|rb|java|c|h|cc|cpp|cs|php|sh|sql|json|ya?ml|toml|md)\\b",
+    "\\blines? \\d+",
+    "```",
+    "`[^`]+`",
+    "\\$ \\w",
+    "\\b\\d+(\\.\\d+)?\\s*(ms|s|kb|mb|gb|%|x)\\b",
+    "\\b(returns?|exits?|prints?|logs?|fails?) with\\b"
   ],
 
   "structural": [
@@ -54,10 +153,11 @@
     ["^#{1,6}\\s*[🌀-🫿☀-➿]", "emoji as section marker"]
   ],
 
+  "_ste_comment": "Matched case-sensitively. The -ing rule anchors on a capital, so it needs the case; the tense rules opt back in with (?i).",
   "ste_patterns": [
-    ["\\b(has|have|had) been \\w+ing\\b", "perfect progressive tense"],
-    ["\\b(has|have|had) been \\w+ed\\b", "perfect passive"],
-    ["\\bwill have \\w+ed\\b", "future perfect"],
-    ["^[A-Z]\\w+ing (the|a|an|\\w+)", "-ing sentence opener"]
+    ["(?i)\\b(has|have|had) been \\w+ing\\b", "perfect progressive tense"],
+    ["(?i)\\b(has|have|had) been (\\w+ed|broken|written|built|sent|taken|given|seen|done|made|held|kept|left|lost|found|set|put|run|read|torn|drawn|thrown|shown|known|grown|blown)\\b", "perfect passive"],
+    ["(?i)\\bwill have \\w+ed\\b", "future perfect"],
+    ["^(?!(Nothing|Something|Anything|Everything|During|String|Spring|Bring|Thing|Ring|Wing|King|Sing)\\b)[A-Z]\\w+ing (the|a|an|\\w+)", "-ing sentence opener"]
   ]
 }
