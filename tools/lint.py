@@ -159,6 +159,149 @@ def check_text(
     return findings
 
 
+CODE_COMMENT_SMELLS = [(p, d) for p, d in _PATTERNS["code_comment_smells"]]
+CODE_VACUOUS = [(p, d) for p, d in _PATTERNS["code_vacuous"]]
+CODE_TEST_SMELLS = [(p, d) for p, d in _PATTERNS["code_test_smells"]]
+
+_HASH = {"line": ["#"], "block": []}
+_SLASH = {"line": ["//"], "block": [("/*", "*/")]}
+_DASH = {"line": ["--"], "block": []}
+COMMENT_SYNTAX = {
+    ".py": {"line": ["#"], "block": [('"""', '"""'), ("'''", "'''")]},
+    ".sh": _HASH, ".bash": _HASH, ".zsh": _HASH, ".rb": _HASH,
+    ".yaml": _HASH, ".yml": _HASH, ".toml": _HASH, ".tf": _HASH,
+    ".js": _SLASH, ".jsx": _SLASH, ".ts": _SLASH, ".tsx": _SLASH,
+    ".go": _SLASH, ".rs": _SLASH, ".java": _SLASH, ".kt": _SLASH,
+    ".c": _SLASH, ".h": _SLASH, ".cc": _SLASH, ".cpp": _SLASH,
+    ".cs": _SLASH, ".php": _SLASH, ".swift": _SLASH, ".scala": _SLASH,
+    ".sql": _DASH, ".lua": _DASH, ".hs": _DASH,
+}
+
+# A string may hold a comment marker. Blanking literals first keeps a url in
+# "https://example.com" from reading as the start of a comment.
+_STRINGS = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
+
+_TEST_PATH = re.compile(r"(^|[/_.])(tests?|specs?)([/_.]|$)|(^|/)(test_|conftest)", re.I)
+
+
+def split_comments(text: str, ext: str) -> tuple[list, list]:
+    """Return (comment lines, code lines) as (lineno, text) pairs.
+
+    Line-based, so it misses a comment marker inside a multi-line template
+    string. tools/ast_check.py does the exact split for the languages it parses.
+    """
+    syntax = COMMENT_SYNTAX.get(ext)
+    if not syntax:
+        return [], []
+
+    comments, code = [], []
+    block_end = None
+    for i, raw in enumerate(text.split("\n"), 1):
+        if block_end:
+            comments.append((i, raw.strip()))
+            if block_end in raw:
+                block_end = None
+            continue
+
+        stripped = _STRINGS.sub('""', raw)
+        opened = None
+        for start, end in syntax["block"]:
+            at = stripped.find(start)
+            if at != -1 and (opened is None or at < opened[0]):
+                opened = (at, start, end)
+
+        cut = None
+        for marker in syntax["line"]:
+            at = stripped.find(marker)
+            if at != -1 and (cut is None or at < cut):
+                cut = at
+        if opened and (cut is None or opened[0] < cut):
+            at, start, end = opened
+            rest = raw[at + len(start):]
+            comments.append((i, rest.strip()))
+            if end not in rest:
+                block_end = end
+            if raw[:at].strip():
+                code.append((i, raw[:at]))
+            continue
+
+        if cut is not None:
+            comments.append((i, raw[cut:].lstrip("#/- ").strip()))
+            if raw[:cut].strip():
+                code.append((i, raw[:cut]))
+        elif raw.strip():
+            code.append((i, raw))
+    return comments, code
+
+
+SKIP_DIRS = {
+    ".git", "node_modules", "vendor", "dist", "build", "target",
+    "__pycache__", ".venv", "venv", ".tox", ".mypy_cache", "site-packages",
+}
+
+
+def walk_sources(args: list[str]):
+    """Yield source files under the given paths, skipping vendored trees."""
+    for arg in args:
+        path = Path(arg)
+        if not path.exists():
+            print(f"File not found: {arg}", file=sys.stderr)
+            sys.exit(1)
+        if path.is_file():
+            yield path
+            continue
+        for child in sorted(path.rglob("*")):
+            if child.suffix not in COMMENT_SYNTAX or not child.is_file():
+                continue
+            if SKIP_DIRS.intersection(child.parts):
+                continue
+            yield child
+
+
+def _scan(lines, patterns, kind, filename, findings):
+    for lineno, text in lines:
+        for pattern, desc in patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                findings.append({
+                    "file": filename,
+                    "line": lineno,
+                    "type": kind,
+                    "match": desc,
+                    "text": text.strip()[:60],
+                })
+
+
+def check_code(text: str, filename: str) -> list[dict]:
+    """Lint a source file: comment prose, vacuous code, test assertions."""
+    if "anti-slop: ignore-file" in text:
+        return []
+
+    ext = Path(filename).suffix
+    comments, code = split_comments(text, ext)
+    findings: list[dict] = []
+
+    _scan(comments, CODE_COMMENT_SMELLS, "code_comment", filename, findings)
+    _scan(code, CODE_VACUOUS, "vacuous_code", filename, findings)
+    if _TEST_PATH.search(filename):
+        _scan(code, CODE_TEST_SMELLS, "test_smell", filename, findings)
+
+    # A comment is prose. The vocabulary rules apply to it.
+    for lineno, comment in comments:
+        for finding in check_text(comment, filename):
+            finding["line"] = lineno
+            findings.append(finding)
+
+    # Two deferral patterns hit one comment. The reader needs the line once.
+    seen, unique = set(), []
+    for finding in sorted(findings, key=lambda f: (f["line"], f["type"])):
+        key = (finding["line"], finding["type"], finding["match"])
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(finding)
+    return unique
+
+
 def format_findings(findings: list[dict], fmt: str = "text") -> str:
     if fmt == "json":
         return json.dumps(findings, indent=2)
@@ -204,7 +347,43 @@ def selftest():
     assert not check_text(
         "# We leverage the cache", strip_comments=True
     ), "comment line not skipped"
+    code_selftest()
     print("selftest ok")
+
+
+def code_selftest():
+    def hits(text, name="x.py"):
+        return {f["match"] for f in check_code(text, name)}
+
+    assert "narrator comment" in hits("# This function handles the request\n")
+    assert "step numbering" in hits("# Step 1: Validate the input\n")
+    assert "deferral language" in hits("# for now, retry three times\n")
+    assert "hedging" in hits("# this should work for most cases\n")
+    assert "comparing a boolean to true" in hits("if ok == True:\n")
+    assert "comparing a value to itself" in hits("if a == a:\n")
+
+    # A comment marker inside a string is not a comment.
+    assert not hits('URL = "https://example.com/#for now"\n')
+    # A comment that carries a fact survives.
+    assert not hits("# qemu unlinks the monitor socket during Wait().\n")
+    # A real equality check between two names is not a tautology.
+    assert not hits("if expected == actual:\n")
+
+    test_src = (
+        "def test_a():\n"
+        "    assert True\n"
+        "    assert add(2, 2) == add(2, 2)\n"
+        "    mailer.send.assert_called_once()\n"
+    )
+    found = hits(test_src, "tests/test_a.py")
+    assert "assertion that cannot fail" in found
+    assert "both sides of the assertion run the same code" in found
+    assert "asserting on a mock instead of behaviour" in found
+    # The same file outside a test path gets no test rules.
+    assert "assertion that cannot fail" not in hits(test_src, "src/a.py")
+
+    assert split_comments("x = 1  // c\n", ".go") == ([(1, "c")], [(1, "x = 1  ")])
+    assert split_comments("a = 1\n", ".unknown") == ([], [])
 
 
 def main():
@@ -214,6 +393,7 @@ def main():
 
     check_mode = "--check" in sys.argv
     json_mode = "--json" in sys.argv
+    code_mode = "--code" in sys.argv
     opts = {
         "ambiguous": "--all" in sys.argv,
         "strip_comments": "--strip-comments" in sys.argv,
@@ -225,6 +405,9 @@ def main():
     if not args or args == ["-"]:
         text = sys.stdin.read()
         all_findings.extend(check_text(text, **opts))
+    elif code_mode:
+        for path in walk_sources(args):
+            all_findings.extend(check_code(path.read_text(errors="replace"), str(path)))
     else:
         for arg in args:
             path = Path(arg)

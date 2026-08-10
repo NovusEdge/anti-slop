@@ -1,12 +1,16 @@
 {
   "_comment": "hook_confidence marks which sets the Stop hook blocks on. The linter reports every set.",
-  "hook_confidence": ["banned_words", "banned_phrases", "sycophancy", "sycophancy_tone", "structural"],
+  "hook_confidence": ["banned_words", "banned_phrases", "sycophancy", "sycophancy_tone", "verbosity", "ambiguous_phrases", "structural"],
+  "_length_comment": "Word count at which the UserPromptSubmit tier notes the length. Never blocks: a report the reader asked for runs as long as it needs.",
+  "length_warning_words": 400,
 
   "_phrase_sets_comment": "set -> {kind, tools}. An entry is a bare pattern or a [pattern, description] pair; the description replaces the matched text in the report, which matters when the match is two characters of punctuation.",
   "_phrase_sets": {
     "banned_phrases": { "kind": "phrase", "tools": ["lint", "hook"] },
     "sycophancy": { "kind": "sycophancy", "tools": ["lint", "hook"] },
-    "sycophancy_tone": { "kind": "sycophancy", "tools": ["hook"] }
+    "sycophancy_tone": { "kind": "sycophancy", "tools": ["hook"] },
+    "verbosity": { "kind": "verbosity", "tools": ["hook"] },
+    "ambiguous_phrases": { "kind": "ambiguous", "tools": ["hook"], "soft": true }
   },
 
   "banned_words": [
@@ -36,7 +40,10 @@
     "\\w+ isn'?t just [^,.;]{2,60}[,;] it'?s",
     "less [^,.]{2,40}, more ",
     "not because [^,.;]{2,60}, but because",
-    "the real (question|issue|problem|point) (is n'?t|isn'?t)",
+    "the real \\w+ (is|was)n'?t\\b",
+    "(is|are|was|were) not just\\b",
+    "(that|this|it)('?s| is| was) [^,.;!?]{1,60}, not\\b",
+    ", not (a|an|the) \\w+",
     "not (merely|simply|just) [^,.;]{2,60}, but",
     "at the end of the day",
     "stands as (a|an|the) ",
@@ -98,6 +105,28 @@
     "i should have (caught|noticed|realized) (that|it|this)\\b"
   ],
 
+  "_verbosity_comment": "Preamble and narration. Each one delays the finding by a sentence and tells the reader something the tool calls already showed.",
+  "verbosity": [
+    ["(^|[.!?] )(yes,? )?i (read|checked|looked at|went through|reviewed) (it|that|the|them)\\b", "narrating what you read"],
+    ["(^|[.!?] )here'?s (the|what) (actual|real|full)? ?(shape|deal|situation|picture|story|breakdown|rundown)", "preamble before the finding"],
+    ["(^|[.!?] )(one|another) thing (i (found|noticed|spotted)|worth)", "burying a finding behind a preamble"],
+    ["(^|[.!?] )let me (walk|explain|break|start|first)", "announcing instead of saying"],
+    ["(^|[.!?] )(so|basically|essentially|in short|in other words|what (this|that) means is)[,:]", "restating the previous sentence"],
+    ["(^|[.!?] )(to (recap|summarize|reiterate)|as (i|we) (said|mentioned|noted) (earlier|above|before))", "repeating yourself"],
+    ["(^|[.!?] )(before (i|we) (start|begin|answer)|first,? (some|a bit of) (context|background))", "preamble before the answer"],
+    ["(^|[.!?] )(it'?s|that'?s) (important|worth) (to (note|understand)|noting|understanding)", "filler opener"],
+    ["(^|[.!?] )(and )?that changes (my|the) earlier (wording|answer|framing)", "narrating a correction"]
+  ],
+
+  "_ambiguous_phrases_comment": "Often legitimate: `use tabs, not spaces` is a plain corrective. Reported on the next turn, never blocked, so a real use costs one line and no rewrite.",
+  "ambiguous_phrases": [
+    ["[^\\s—]+ — [^\\s—]+ — ", "em-dash pair; a comma or a colon usually reads better"],
+    [", not \\w+", "corrective list; check it is not the contrast construction"],
+    ["\\brather than\\b", "rather than; check it is not the contrast construction"],
+    ["(^|[.!?] )when it comes to ", "when it comes to; for or about is plainer"],
+    ["(^|[.!?] )at its core[,;: ]", "at its core; say the thing"]
+  ],
+
   "_tone_comment": "Hook only. These fire on committed markdown too often to gate a commit: a README writes `Run make install!` and `Of course, the cache can be disabled`. In a chat reply they are the enthusiasm register.",
   "sycophancy_tone": [
     ["(^|[.!?] )(absolutely|certainly|definitely|exactly|indeed|perfect|excellent|awesome|wonderful|fantastic|brilliant)[!.,]", "enthusiasm opener"],
@@ -141,6 +170,53 @@
     "\\$ \\w",
     "\\b\\d+(\\.\\d+)?\\s*(ms|s|kb|mb|gb|%|x)\\b",
     "\\b(returns?|exits?|prints?|logs?|fails?) with\\b"
+  ],
+
+  "_code_comment_comment": "Applied by `lint.py --code` to comment and docstring text only, never to code. A comment states a fact about the code. These patterns state the author's confidence, or narrate, or defer.",
+  "code_comment_smells": [
+    ["(^|[.!?] )(this|the) (function|method|class|block|line|code|loop|helper) (handles|does|is responsible for|takes care of|will|performs|manages)", "narrator comment"],
+    ["^step \\d+\\s*[:.-]", "step numbering"],
+    ["^(first|second|third|next|then|finally)\\s*[,:]", "step narration"],
+    ["\\b(for now|for the moment|temporarily|temporary (fix|solution|workaround)|placeholder)\\b", "deferral language"],
+    ["\\b(we (can|could|might|may)|you (can|could|would|might) (want|need)) (add|make|change|improve|refactor|extend|handle) (this|it|that)\\b", "deferral language"],
+    ["\\b(should work|should be fine|hopefully|presumably|i think this|not sure if|might not work|in theory)\\b", "hedging"],
+    ["\\b(in a real|in a production|in an actual) (implementation|system|app|scenario|setting)\\b", "placeholder prose"],
+    ["\\b(dummy|fake|sample|example|placeholder) (data|value|implementation|response)\\b", "placeholder prose"],
+    ["^(todo|fixme|hack|xxx)\\s*[:.-]?\\s*(handle|fix|implement|add|do|clean|improve)?\\s*(this|it|that|properly|later)?\\s*$", "unassigned marker"],
+    ["\\b(as (you|we) (requested|discussed|pointed out|mentioned)|per your (request|comment|feedback))\\b", "comment addressed to a person"],
+    ["\\b(originally|initially|at first) (we|i|this) (called|tried|had|used|thought)\\b", "investigation narrative"],
+    ["\\b(note that (we|this|it)|it('s| is) (worth|important) (noting|to note))\\b", "filler opener"],
+    ["^={4,}|^-{4,}\\s*$|^#{4,}\\s*$|^\\*{4,}", "section banner"]
+  ],
+
+  "_code_vacuous_comment": "Applied by `lint.py --code` to code lines. Each construct runs and decides nothing. Kept narrow: every entry has to be wrong in every language that has the syntax.",
+  "code_vacuous": [
+    ["\\bif\\s*\\(?\\s*(true|True)\\s*\\)?\\s*[:{]", "condition is always true"],
+    ["\\bif\\s*\\(?\\s*(false|False)\\s*\\)?\\s*[:{]", "condition is always false"],
+    ["[=!]=\\s*(true|True)\\b", "comparing a boolean to true"],
+    ["[=!]=\\s*(false|False)\\b", "comparing a boolean to false"],
+    ["\\bis\\s+(not\\s+)?(True|False)\\b", "comparing a boolean to a literal"],
+    ["\\b(\\w+)\\s*==\\s*\\1\\b", "comparing a value to itself"],
+    ["\\blen\\(\\s*\\w+\\s*\\)\\s*>=\\s*0\\b", "length is always non-negative"],
+    ["\\.length\\s*>=\\s*0\\b", "length is always non-negative"],
+    ["\\bexcept\\s+\\w+(\\s+as\\s+(\\w+))?\\s*:\\s*raise\\s+\\2\\s*$", "catch and re-raise unchanged"],
+    ["\\bexcept\\b.*:\\s*pass\\s*$", "silent exception handler"],
+    ["\\bcatch\\s*\\([^)]*\\)\\s*\\{\\s*\\}", "silent exception handler"],
+    ["^\\s*(\\w+)\\s*=\\s*\\1\\s*$", "assigning a value to itself"]
+  ],
+
+  "_code_test_comment": "Applied by `lint.py --code` to files whose path marks them as tests. An assertion that cannot fail is worse than no assertion, because a reader trusts it.",
+  "code_test_smells": [
+    ["\\bassert\\s+(True|true)\\s*[,)]?\\s*$", "assertion that cannot fail"],
+    ["\\bassert\\s+(\\S.{0,60}?)\\s*==\\s*\\1\\s*[,)]?\\s*$", "both sides of the assertion run the same code"],
+    ["\\b(toBe|toEqual)\\((\\w+\\([^()]*\\))\\)", "expected value comes from calling the code under test"],
+    ["\\bassertTrue\\(\\s*(True|true)\\s*\\)", "assertion that cannot fail"],
+    ["\\bexpect\\(\\s*(true|True)\\s*\\)\\.(toBe|toEqual)\\(\\s*(true|True)\\s*\\)", "assertion that cannot fail"],
+    ["\\.(assert_called|assert_called_once|assert_called_with|assert_called_once_with|assert_any_call|toHaveBeenCalled)\\b", "asserting on a mock instead of behaviour"],
+    ["\\bassert\\s+\\w+\\.(called|call_count)\\b", "asserting on a mock instead of behaviour"],
+    ["\\b(pytest\\.raises|assertRaises)\\(\\s*(Exception|BaseException)\\s*\\)", "catching any exception hides a typo"],
+    ["@(pytest\\.mark\\.)?(skip|xfail)\\b(?!.*reason)", "skipped without a reason"],
+    ["\\b(it|test)\\.(skip|todo)\\(", "skipped test"]
   ],
 
   "structural": [

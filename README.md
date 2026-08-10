@@ -42,19 +42,56 @@ Five layers, applied together:
 ## Usage
 
 ```
-/anti-slop:anti-slop            invoke the skill
-/anti-slop:anti-slop review     review and fix text
+/anti-slop:anti-slop            prose: STE grammar, vocabulary, sycophancy
+/anti-slop:anti-slop-code       code and docs: comments, structure, tests
+```
+
+## Code and documentation
+
+`anti-slop-code` covers source and the documentation around it: comments that
+restate the line below, defensive wrappers around code that cannot throw, tests
+that assert mocks or get edited until they pass, docstrings that repeat the
+signature, feature-tour READMEs, commit bodies that narrate the investigation.
+
+Every rule is a code-quality rule with a reason. None of them detects
+authorship. Human code carries all of these patterns, and a rule that fires on
+"this looks generated" fires on clean idiomatic code and on anyone writing
+English as a second language.
+
+```bash
+# comments and docstrings, extracted per language
+python3 tools/lint.py --code src/
+
+# structural checks that need a parse
+python3 tools/ast_check.py src/
+```
+
+`lint.py --code` reads comments in Python, JavaScript, TypeScript, Go, Rust,
+Java and a dozen more, blanking string literals first so a url does not read as
+a comment. It flags narrator comments, step numbering, deferral text, hedging,
+and placeholder prose, plus vacuous code (`if True`, `x == x`, `flag == True`)
+and test smells (`assert True`, asserting on a mock, a skip with no reason).
+
+`ast_check.py` catches what a regex cannot: a comment whose words all come from
+the statement below it, two variables holding the same value, runs of blank
+lines inside a function, `except: pass`, and `if/else` returning `True`/`False`.
+Python needs nothing installed. The other languages need tree-sitter, and the
+tool names the files it skipped without it:
+
+```bash
+pip install tree-sitter tree-sitter-language-pack
 ```
 
 ## Hooks
 
-Three hooks run without being invoked. None of them blocks a turn.
+Four hooks run without being invoked.
 
 | Hook | When | What |
 |---|---|---|
 | `SessionStart` | startup, resume, clear, **compact** | Injects `hooks/rules.md` into context. The `compact` matcher restores the rules after a summarization drops them. |
 | `SubagentStart` | every subagent and workflow agent | Injects the same rules. A subagent gets a fresh context, so nothing from the parent session reaches it. |
-| `UserPromptSubmit` | every prompt | Lints the previous assistant turn and reports the offending sentences. The whole turn is read, including prose written before a tool call. Every 10th prompt it also restates a one-line reminder, because a rule stated once at turn 1 stops steering by turn 40. |
+| `Stop` | end of every turn | **Blocks** on a violation and sends the model back to rewrite before the message ships. Retries once, then gives up. |
+| `UserPromptSubmit` | every prompt | Reports what the block let through, plus the soft findings that never block. Every 10th prompt it restates a one-line reminder, because a rule stated once at turn 1 stops steering by turn 40. |
 
 Findings arrive grouped under the rule they broke, sycophancy first:
 
@@ -70,16 +107,22 @@ never drops it behind a word-list hit.
 
 Change the reminder cadence with `ANTI_SLOP_REMIND_EVERY=5`. Turn the whole thing off with `/plugin disable anti-slop`.
 
-### Why the lint does not run on `Stop`
+### Why the block runs on `Stop`
 
-Claude Code appends the final assistant message to the transcript *after* the
-`Stop` hook fires. A `Stop` hook therefore reads the previous turn, never the
-one that triggered it. It reports on a message that already shipped, then blocks
-the next turn to complain about it.
+A `Stop` hook receives `last_assistant_message`, so it reads the turn that
+triggered it. Returning `{"decision": "block", "reason": ...}` sends the model
+back to rewrite before the message reaches the reader. `stop_hook_active` guards
+the retry, so a phrasing the regex cannot love costs one extra pass and never
+traps the turn.
 
-`UserPromptSubmit` reads the same previous turn, but the timing is honest: the
-report arrives before the next reply, where it can change something. Each turn is
-reported once, keyed by its transcript uuid.
+The other model-visible channel is `additionalContext` at `UserPromptSubmit`,
+which carries what survived the block and the soft findings. `systemMessage`
+renders for the reader and never enters the model's context, so a rule written
+that way changes nothing.
+
+Soft findings never block. A corrective list (`use tabs, not spaces`) and an
+em-dash pair are legitimate often enough that a hard stop on them would train the
+model to discount the channel.
 
 ### The capitulation check
 
