@@ -21,6 +21,8 @@ const DIRECTIVE = {
   word: 'BANNED VOCABULARY RULE',
   phrase: 'BANNED CONSTRUCTION RULE',
   structure: 'STRUCTURAL SLOP RULE',
+  verbosity: 'BREVITY RULE',
+  ambiguous: 'WRITING-STYLE NOTE (soft, judge it)',
   default: 'ANTI-SLOP RULE',
 };
 const SHORT =
@@ -38,6 +40,15 @@ process.stdin.on('end', () => {
     data = JSON.parse(input);
   } catch {
     process.exit(0);
+  }
+
+  // Stop carries last_assistant_message, so the turn that triggered the hook is
+  // readable here. A block sends the model back to rewrite before the message
+  // ships. systemMessage reaches the user only, so an advisory tier is invisible
+  // to the model and changes nothing.
+  if (data.hook_event_name === 'Stop') {
+    stopGate(data);
+    return;
   }
 
   if (data.hook_event_name !== 'UserPromptSubmit') {
@@ -64,6 +75,34 @@ process.stdin.on('end', () => {
   if (out.length) console.log(out.join('\n'));
 });
 
+// One retry only. A phrasing the regex cannot love must not trap the turn.
+function stopGate(data) {
+  if (data.stop_hook_active) return process.exit(0);
+  const message = data.last_assistant_message;
+  if (!message) return process.exit(0);
+
+  // A soft finding reports on the next turn and never blocks. Length is soft:
+  // a report the reader asked for is allowed to be long.
+  const violations = check(message, '').filter(v => !v.soft);
+  if (!violations.length) return process.exit(0);
+
+  const lines = violations
+    .slice(0, MAX_REPORTED)
+    .map(v => `  ${DIRECTIVE[v.kind] || DIRECTIVE.default}: ${v.match} — "${v.sentence}"`);
+
+  process.stdout.write(
+    JSON.stringify({
+      decision: 'block',
+      reason:
+        'Your message breaks anti-slop rules:\n' +
+        lines.join('\n') +
+        '\nRewrite the offending sentences so each states the thing directly, ' +
+        'then reply with the corrected message. Do not narrate the correction.',
+    })
+  );
+  process.exit(0);
+}
+
 function report(data) {
   const state = loadState(data.session_id);
   const turn = lastTurn(data.transcript_path);
@@ -80,7 +119,9 @@ function report(data) {
   // model which rule it broke.
   // Sycophancy first. Truncation used to drop it behind a word-list hit, and it
   // is the finding the model most needs to see.
-  const rank = { sycophancy: 0, phrase: 1, structure: 2, word: 3 };
+  const rank = {
+    sycophancy: 0, verbosity: 1, phrase: 2, structure: 3, word: 4, ambiguous: 5,
+  };
   const ordered = [...violations].sort(
     (a, b) => (rank[a.kind] ?? 9) - (rank[b.kind] ?? 9)
   );

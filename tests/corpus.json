@@ -57,6 +57,11 @@
     { "text": "Great work on the allocator.", "hit": true, "tools": ["lint", "hook"], "why": "praise for the reader" },
     { "text": "Couldn't agree more.", "hit": true, "tools": ["lint", "hook"], "why": "bare agreement" },
     { "text": "Excellent. The suite is green.", "hit": true, "tools": ["hook"], "why": "enthusiasm opener, hook-only tier" },
+
+    { "text": "Settings are enforced, not a suggestion.", "hit": true, "tools": ["lint", "hook"], "why": "appositive contrast" },
+    { "text": "That is a priority instruction, not a discovery one.", "hit": true, "tools": ["lint", "hook"], "why": "contrast, uncontracted that is" },
+    { "text": "This is not just a refactor, the API changed too.", "hit": true, "tools": ["lint", "hook"], "why": "contrast, uncontracted is not just" },
+    { "text": "Use tabs, not spaces, in this file.", "hit": true, "tools": ["hook"], "why": "soft note only; a corrective list is allowed" },
     { "text": "The parser reads a good chunk of the file.", "hit": false, "tools": ["lint", "hook"], "why": "good as an ordinary adjective" },
     { "text": "That was a good call to the allocator.", "hit": false, "tools": ["lint", "hook"], "why": "call as a verb, not praise" },
     { "text": "The retry runs at a good point in the loop.", "hit": false, "tools": ["lint", "hook"], "why": "point as a location, not praise" },

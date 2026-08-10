@@ -27,7 +27,7 @@ const hit = (text, user) => check(text, user).length > 0;
   console.log(`corpus ok (${ran} cases)`);
 }
 
-// Blocking sets fire.
+// The blocking sets fire.
 assert.ok(hit('We leverage the cache.'), 'banned word missed');
 assert.ok(hit("It's not a cache, it's a buffer."), 'contrast construction missed');
 assert.ok(hit('This is load-bearing for the retry path.'), 'phrase missed');
@@ -74,6 +74,30 @@ assert.ok(!hit('Postgres or SQLite?'), 'plain question blocked');
     !cap('You are right. I will fix it.', 'can you add a retry to the fetch'),
     'fired without a pushback'
   );
+}
+
+// A soft finding reports and never blocks, so a corrective list survives.
+{
+  const soft = check('Use tabs, not spaces, in this file.');
+  assert.ok(soft.length, 'corrective list not noted');
+  assert.ok(soft.every(v => v.soft), 'corrective list must stay soft');
+  const hard = check('Settings are enforced, not a suggestion.');
+  assert.ok(hard.some(v => !v.soft), 'appositive contrast must block');
+}
+
+// Preamble and narration.
+assert.ok(hit('Yes, I read it. The lock is held.'), 'narration missed');
+assert.ok(hit("Here's the actual shape of the deploy."), 'preamble missed');
+assert.ok(hit('One thing I found while reading matters more.'), 'buried finding missed');
+assert.ok(!hit('The runner polls /health until the version matches.'), 'plain report blocked');
+
+// The length finding is soft: it reports and never blocks.
+{
+  const long = check('word '.repeat(500));
+  const lengthFinding = long.find(v => /words of prose/.test(v.match));
+  assert.ok(lengthFinding, 'length finding missed');
+  assert.strictEqual(lengthFinding.soft, true, 'length finding must be soft');
+  assert.ok(!check('The registry holds one lock.').some(v => v.soft), 'short reply flagged');
 }
 
 // Ambiguous words never block.

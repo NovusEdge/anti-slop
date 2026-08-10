@@ -30,7 +30,7 @@ function normalize(text) {
 function inflect(word) {
   if (word.endsWith('ic')) return `${word}(?:ally|s)?`;
   if (word.endsWith('e')) return `${word.slice(0, -1)}(?:e|es|ed|ing|ely)`;
-  // A consonant before the y takes -ies: tapestry, tapestries.
+  // A consonant before the y takes -ies: `tapestry`, `tapestries`.
   if (word.endsWith('y') && !'aeiou'.includes(word[word.length - 2])) {
     return `(?:${word}|${word.slice(0, -1)}ies)`;
   }
@@ -118,11 +118,11 @@ function check(assistantText, userText) {
   const violations = [];
   const seen = new Set();
 
-  const add = (kind, match, sentence) => {
+  const add = (kind, match, sentence, soft) => {
     const key = `${kind}:${match}:${sentence}`;
     if (seen.has(key)) return;
     seen.add(key);
-    violations.push({ kind, match, sentence: clip(sentence) });
+    violations.push({ kind, match, sentence: clip(sentence), ...(soft && { soft }) });
   };
 
   const sets = P.hook_confidence || ['banned_words', 'banned_phrases'];
@@ -141,7 +141,7 @@ function check(assistantText, userText) {
       for (const entry of P[set] || []) {
         const [pattern, desc] = Array.isArray(entry) ? entry : [entry, null];
         const m = sentence.match(new RegExp(pattern, 'i'));
-        if (m) add(spec.kind, desc || m[0].trim(), sentence);
+        if (m) add(spec.kind, desc || m[0].trim(), sentence, spec.soft);
       }
     }
     if (sets.includes('structural')) {
@@ -152,6 +152,7 @@ function check(assistantText, userText) {
   }
 
   violations.push(...bulletBolding(prose));
+  violations.push(...tooLong(prose));
   violations.push(...capitulation(prose, assistantText, userText));
   return violations;
 }
@@ -182,6 +183,22 @@ function capitulation(prose, raw, userText) {
       kind: 'sycophancy',
       match: `agreed with a correction and cited nothing (${agreed[0].trim()})`,
       sentence: clip(opening),
+    },
+  ];
+}
+
+// A long reply is sometimes the right reply, so this reports and never blocks.
+// Code and quoted output are already stripped, so the count is prose only.
+function tooLong(prose) {
+  const limit = P.length_warning_words || 400;
+  const words = prose.split(/\s+/).filter(Boolean).length;
+  if (words <= limit) return [];
+  return [
+    {
+      kind: 'verbosity',
+      soft: true,
+      match: `${words} words of prose (over ${limit})`,
+      sentence: 'Lead with the finding. Cut recap, narration and restatement.',
     },
   ];
 }
