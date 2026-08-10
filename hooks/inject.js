@@ -126,8 +126,8 @@ function midTurn(data) {
 const key = v => `${v.kind}:${v.match}:${v.sentence}`;
 
 // Both hooks derive the turn from the same walk, so the opening user prompt is
-// the one identifier they agree on. prompt_id is not usable here: at
-// UserPromptSubmit it names the prompt that just arrived, not the turn on disk.
+// the one identifier they agree on. prompt_id identifies the prompt that just
+// arrived at UserPromptSubmit, and the turn on disk carries an older one.
 const turnId = turn =>
   turn.user ? crypto.createHash('sha1').update(turn.user).digest('hex').slice(0, 12) : null;
 
