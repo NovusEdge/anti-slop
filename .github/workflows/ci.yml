@@ -5,32 +5,33 @@ on:
   pull_request:
 
 jobs:
-  test:
+  python:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          python-version: ${{ matrix.python-version }}
 
       - name: linter selftest
         run: python3 tools/lint.py --selftest
 
-      - name: hook selftest
-        run: node hooks/selftest.js
-
       - name: ast selftest
         run: python3 tools/ast_check.py --selftest
 
-      # The plugin's own Python has to survive its own structural rules.
-      - name: ast check own source
-        run: python3 tools/ast_check.py --check tools/
+      - name: changelog extractor selftest
+        run: python3 tools/changelog_section.py --selftest
 
-      # The deep-dive docs quote the banned list and carry an ignore-file marker,
-      # so the linter skips them. README, CONTRIBUTING, and CHANGELOG get checked.
+      - name: install tree-sitter for the JS ast check
+        run: pip install tree-sitter tree-sitter-language-pack
+
+      # With tree-sitter present, ast_check parses the hooks JavaScript too.
+      - name: ast check own source
+        run: python3 tools/ast_check.py --check hooks/ tools/
+
       - name: lint own docs
         run: python3 tools/lint.py --check README.md docs/CONTRIBUTING.md docs/CHANGELOG.md docs/hooks.md docs/linting.md
 
@@ -44,3 +45,16 @@ jobs:
 
       - name: lint own comments
         run: python3 tools/lint.py --check --code tools/ hooks/ install.sh
+
+  node:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['18', '20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: hook selftest
+        run: node hooks/selftest.js
