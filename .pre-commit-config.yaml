@@ -1,0 +1,9 @@
+# Install the commit-msg stage once: pre-commit install --hook-type commit-msg
+repos:
+  - repo: local
+    hooks:
+      - id: strip-claude-coauthor
+        name: strip Claude co-author trailers
+        entry: tools/strip_coauthor.sh
+        language: script
+        stages: [commit-msg]
