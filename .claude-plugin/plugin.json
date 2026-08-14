@@ -1,13 +1,13 @@
 {
-  "name": "anti-slop",
-  "displayName": "anti-slop",
+  "name": "curt",
+  "displayName": "Curt",
   "version": "0.3.0",
-  "description": "Enforce clear technical prose — STE grammar, no AI buzzwords, no LinkedIn cadence",
+  "description": "Makes Claude Code write like Curt: terse, no buzzwords, no flattery. STE grammar and an anti-slop linter.",
   "author": {
     "name": "NovusEdge"
   },
   "license": "MIT",
-  "homepage": "https://github.com/NovusEdge/anti-slop",
+  "homepage": "https://github.com/NovusEdge/curt",
   "keywords": [
     "writing",
     "style",

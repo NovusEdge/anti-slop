@@ -37,11 +37,11 @@ pip install tree-sitter tree-sitter-language-pack
 ## Pre-commit hook
 
 ```yaml
-- repo: https://github.com/NovusEdge/anti-slop
+- repo: https://github.com/NovusEdge/curt
   rev: main
   hooks:
-    - id: anti-slop            # markdown files
-    - id: anti-slop-commit-msg # the commit message
+    - id: curt            # markdown files
+    - id: curt-commit-msg # the commit message
       stages: [commit-msg]
 ```
 
