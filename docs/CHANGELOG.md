@@ -2,6 +2,12 @@
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Renamed the project from anti-slop to curt. Re-add the marketplace as `NovusEdge/curt` and install `curt@curt`. The rules it enforces stay the anti-slop discipline, so the `ANTI_SLOP_*` env vars and the ignore markers are unchanged.
+
 ## [0.3.0]
 
 ### Added
@@ -32,6 +38,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - The prose linter, the banned-vocabulary and sycophancy layers, and the session-start directive.
 
-[0.3.0]: https://github.com/NovusEdge/anti-slop/releases/tag/v0.3.0
-[0.2.0]: https://github.com/NovusEdge/anti-slop/releases/tag/v0.2.0
-[0.1.0]: https://github.com/NovusEdge/anti-slop/releases/tag/v0.1.0
+[0.3.0]: https://github.com/NovusEdge/curt/releases/tag/v0.3.0
+[0.2.0]: https://github.com/NovusEdge/curt/releases/tag/v0.2.0
+[0.1.0]: https://github.com/NovusEdge/curt/releases/tag/v0.1.0

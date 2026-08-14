@@ -14,7 +14,7 @@ The prose-lint hooks never block. `PostToolUse` and `UserPromptSubmit` carry the
 
 ## Configuration
 
-`ANTI_SLOP_REMIND_EVERY` sets the reminder cadence (default 9). `ANTI_SLOP_TOOL_GUARD` sets the guard posture (below). Turn the whole plugin off with `/plugin disable anti-slop`.
+`ANTI_SLOP_REMIND_EVERY` sets the reminder cadence (default 9). `ANTI_SLOP_TOOL_GUARD` sets the guard posture (below). Turn the whole plugin off with `/plugin disable curt`.
 
 ## Tool discipline
 
