@@ -83,6 +83,12 @@
     { "text": "Handling the error takes care.", "hit": true, "tools": ["lint"], "why": "-ing sentence opener" },
     { "text": "The socket has been closed.", "hit": true, "tools": ["lint"], "why": "perfect passive" },
     { "text": "The file has been broken since Tuesday.", "hit": true, "tools": ["lint"], "why": "perfect passive, irregular participle" },
-    { "text": "The job has been running for an hour.", "hit": true, "tools": ["lint"], "why": "perfect progressive" }
+    { "text": "The job has been running for an hour.", "hit": true, "tools": ["lint"], "why": "perfect progressive" },
+
+    { "text": "This gives a clean, simple solution.", "hit": true, "tools": ["hook"], "why": "stacked adjectives, soft note" },
+    { "text": "The design is fast and efficient.", "hit": true, "tools": ["hook"], "why": "stacked adjectives joined by and" },
+    { "text": "Actually, wait — the lock is fine.", "hit": true, "tools": ["hook"], "why": "thinking out loud instead of answering" },
+    { "text": "Here's a summary of the changes I made.", "hit": true, "tools": ["hook"], "why": "unsolicited closing summary" },
+    { "text": "The retry is fast and the cache holds one entry.", "hit": false, "tools": ["hook"], "why": "adjectives on different nouns, not stacked" }
   ]
 }

@@ -29,10 +29,10 @@ jobs:
       - name: ast check own source
         run: python3 tools/ast_check.py --check tools/
 
-      # README.md is the only doc without an ignore-file marker. The rest quote
-      # the banned list, so linting them checks nothing.
+      # The deep-dive docs quote the banned list and carry an ignore-file marker,
+      # so the linter skips them. README, CONTRIBUTING, and CHANGELOG get checked.
       - name: lint own docs
-        run: python3 tools/lint.py --check README.md
+        run: python3 tools/lint.py --check README.md docs/CONTRIBUTING.md docs/CHANGELOG.md docs/hooks.md docs/linting.md
 
       - name: lint own comments
         run: python3 tools/lint.py --check --code tools/ hooks/ install.sh

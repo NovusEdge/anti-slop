@@ -1,8 +1,8 @@
 {
   "_comment": "hook_confidence marks which sets the Stop hook blocks on. The linter reports every set.",
   "hook_confidence": ["banned_words", "banned_phrases", "sycophancy", "sycophancy_tone", "verbosity", "ambiguous_phrases", "structural"],
-  "_length_comment": "Word count at which the UserPromptSubmit tier notes the length. Never blocks: a report the reader asked for runs as long as it needs.",
-  "length_warning_words": 400,
+  "_length_comment": "Word count at which the UserPromptSubmit tier notes the length. Never blocks: a report the reader asked for runs as long as it needs. Anthropic hard-capped Claude Code responses at 100 words in April 2026 and reverted it four days later after a 3% eval drop, so this stays a soft nudge, not a cap.",
+  "length_warning_words": 250,
 
   "_phrase_sets_comment": "set -> {kind, tools}. An entry is a bare pattern or a [pattern, description] pair; the description replaces the matched text in the report, which matters when the match is two characters of punctuation.",
   "_phrase_sets": {
@@ -115,7 +115,9 @@
     ["(^|[.!?] )(to (recap|summarize|reiterate)|as (i|we) (said|mentioned|noted) (earlier|above|before))", "repeating yourself"],
     ["(^|[.!?] )(before (i|we) (start|begin|answer)|first,? (some|a bit of) (context|background))", "preamble before the answer"],
     ["(^|[.!?] )(it'?s|that'?s) (important|worth) (to (note|understand)|noting|understanding)", "filler opener"],
-    ["(^|[.!?] )(and )?that changes (my|the) earlier (wording|answer|framing)", "narrating a correction"]
+    ["(^|[.!?] )(and )?that changes (my|the) earlier (wording|answer|framing)", "narrating a correction"],
+    ["(^|[.!?] )(actually,? wait|wait,? no|on second thought|let me reconsider|scratch that)\\b", "thinking out loud instead of answering"],
+    ["(^|[.!?] )here'?s (a|the) (quick |brief |short )?summary of (the |your )?(change|work|what)", "closing summary the reader did not ask for"]
   ],
 
   "_ambiguous_phrases_comment": "Often legitimate: `use tabs, not spaces` is a plain corrective. Reported on the next turn, never blocked, so a real use costs one line and no rewrite.",
@@ -123,6 +125,7 @@
     ["[^\\s—]+ — [^\\s—]+ — ", "em-dash pair; a comma or a colon usually reads better"],
     [", not \\w+", "corrective list; check it is not the contrast construction"],
     ["\\brather than\\b", "rather than; check it is not the contrast construction"],
+    ["\\b(clean|simple|elegant|powerful|fast|efficient|clear|concise|flexible|modern|intuitive|lightweight|straightforward|reliable|tidy|neat|minimal|quick|smart)\\b,?\\s+(and\\s+)?(clean|simple|elegant|powerful|fast|efficient|clear|concise|flexible|modern|intuitive|lightweight|straightforward|reliable|tidy|neat|minimal|quick|smart)\\b", "stacked adjectives; keep the one that carries the meaning"],
     ["(^|[.!?] )when it comes to ", "when it comes to; for or about is plainer"],
     ["(^|[.!?] )at its core[,;: ]", "at its core; say the thing"]
   ],

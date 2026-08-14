@@ -1,6 +1,6 @@
 ---
 name: anti-slop-code
-description: "Strip machine-written tells from source code and technical documentation. Narrator comments, defensive boilerplate, dead generality, tests that assert mocks, docstrings that restate the signature."
+description: "Audit and trim code itself — narrator comments, defensive boilerplate, dead generality, tests that assert mocks, docstrings that restate the signature. Use for source files; use anti-slop for prose."
 version: 0.1.0
 ---
 

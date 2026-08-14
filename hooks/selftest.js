@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { check, lastTurn } = require('./check.js');
+const { ruleTargetFor, fileOpReason } = require('./inject.js');
 
 const hit = (text, user) => check(text, user).length > 0;
 
@@ -200,6 +201,109 @@ assert.ok(!found[0].sentence.includes('lock is fine'), 'sentence split failed');
     fs.unlinkSync(file);
     try { fs.unlinkSync(state); } catch { /* never written */ }
   }
+}
+
+// ruleTargetFor maps a tool call to one rule file. Unit-tested directly, so a
+// new extension is one assertion away.
+{
+  const t = (tool, input) => ruleTargetFor({ tool_name: tool, tool_input: input });
+
+  for (const f of ['a.py', 'b.js', 'c.ts', 'd.tsx', 'e.go', 'f.rs', 'g.rb', 'h.sh', 'i.sql', 'j.c', 'k.cpp', 'l.ipynb']) {
+    const target = f.endsWith('.ipynb') ? t('NotebookEdit', { notebook_path: `/x/${f}` }) : t('Edit', { file_path: `/x/${f}` });
+    assert.strictEqual(target, 'code', `${f} should route code`);
+  }
+  for (const f of ['R.md', 'n.mdx', 'd.rst', 'p.txt', 'a.adoc']) {
+    assert.strictEqual(t('Write', { file_path: `/x/${f}` }), 'prose', `${f} should route prose`);
+  }
+  assert.strictEqual(t('MultiEdit', { file_path: '/x/m.go' }), 'code', 'MultiEdit on source routes code');
+
+  for (const cmd of ['git commit -m "x"', 'cd repo && git commit --amend', 'git -c user.name=x commit -m y']) {
+    assert.strictEqual(t('Bash', { command: cmd }), 'commit', `"${cmd}" should route commit`);
+  }
+  assert.strictEqual(t('Write', { file_path: '/r/.git/COMMIT_EDITMSG' }), 'commit', 'a commit message file routes commit');
+
+  for (const [tool, input] of [
+    ['Bash', { command: 'git status' }],
+    ['Bash', { command: 'git log --oneline' }],
+    ['Read', { file_path: '/x/a.py' }],
+    ['Edit', { file_path: '/x/data.json' }],
+    ['Edit', { file_path: '/x/config.yaml' }],
+    ['Edit', { file_path: '/x/logo.png' }],
+    ['Edit', { file_path: '/x/Makefile' }],
+  ]) {
+    assert.strictEqual(t(tool, input), null, `${tool} ${JSON.stringify(input)} should route nothing`);
+  }
+}
+
+// The deterministic router injects one rule file per target, once per session.
+{
+  const { execFileSync } = require('child_process');
+  const session = 'selftest-router';
+  const state = path.join(os.tmpdir(), `anti-slop-${session}.json`);
+  try { fs.unlinkSync(state); } catch { /* never written */ }
+  const run = (tool, input) =>
+    execFileSync(process.execPath, [path.join(__dirname, 'inject.js')], {
+      input: JSON.stringify({
+        hook_event_name: 'PostToolUse',
+        session_id: session,
+        transcript_path: '/nonexistent',
+        tool_name: tool,
+        tool_input: input,
+      }),
+      encoding: 'utf8',
+    });
+
+  try {
+    assert.match(run('Edit', { file_path: '/tmp/x.py' }), /ANTI-SLOP CODE DIRECTIVE/, 'code rules not routed for a .py edit');
+    assert.strictEqual(run('Edit', { file_path: '/tmp/y.py' }), '', 'code rules routed twice in one session');
+    assert.match(run('Write', { file_path: '/tmp/README.md' }), /ANTI-SLOP PROSE DIRECTIVE/, 'prose rules not routed for a .md edit');
+    assert.match(run('Bash', { command: 'git commit -m "fix"' }), /ANTI-SLOP COMMIT DIRECTIVE/, 'commit rules not routed for git commit');
+    assert.strictEqual(run('Read', { file_path: '/tmp/x.py' }), '', 'a read must route nothing');
+    assert.strictEqual(run('Bash', { command: 'git status' }), '', 'a non-commit git call must route nothing');
+  } finally {
+    try { fs.unlinkSync(state); } catch { /* never written */ }
+  }
+}
+
+// The Bash guard flags file ops that belong to Write/Edit/Read, and passes the rest.
+{
+  const r = fileOpReason;
+  assert.ok(r('sed -i s/a/b/ notes.txt'), 'sed -i not flagged');
+  assert.ok(r('perl -pi -e s/a/b/ app.py'), 'perl -i not flagged');
+  assert.ok(r('echo "x" > config.py'), 'redirect to source not flagged');
+  assert.ok(r('cat <<EOF > server.js\nx\nEOF'), 'heredoc redirect not flagged');
+  assert.ok(r('printf "%s" done >> README.md'), 'append to docs not flagged');
+  assert.ok(r('tee out.md'), 'tee to a file not flagged');
+  assert.ok(r('cat README.md'), 'cat of a doc not flagged');
+  assert.ok(r('head -n 5 main.go'), 'head of source not flagged');
+
+  assert.strictEqual(r('npm test'), null, 'plain command flagged');
+  assert.strictEqual(r('echo hi > /dev/null'), null, 'a no-extension redirect flagged');
+  assert.strictEqual(r('cat foo.log'), null, 'a log read flagged');
+  assert.strictEqual(r('grep foo bar.py'), null, 'grep flagged');
+  assert.strictEqual(r('git commit -m "fix"'), null, 'commit flagged');
+  assert.strictEqual(r('rm -rf build'), null, 'rm flagged');
+}
+
+// The guard posture comes from ANTI_SLOP_TOOL_GUARD: ask by default, deny, or off.
+{
+  const { execFileSync } = require('child_process');
+  const run = (command, env) =>
+    execFileSync(process.execPath, [path.join(__dirname, 'inject.js')], {
+      input: JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command } }),
+      encoding: 'utf8',
+      env: { ...process.env, ...env },
+    });
+
+  const ask = JSON.parse(run('echo x > app.py', { ANTI_SLOP_TOOL_GUARD: 'ask' }));
+  assert.strictEqual(ask.hookSpecificOutput.permissionDecision, 'ask', 'default posture must ask');
+  assert.match(ask.hookSpecificOutput.permissionDecisionReason, /Write or Edit/, 'reason must name the tool');
+
+  const deny = JSON.parse(run('sed -i s/a/b/ app.py', { ANTI_SLOP_TOOL_GUARD: 'deny' }));
+  assert.strictEqual(deny.hookSpecificOutput.permissionDecision, 'deny', 'deny posture must deny');
+
+  assert.strictEqual(run('echo x > app.py', { ANTI_SLOP_TOOL_GUARD: 'off' }), '', 'off posture must stay silent');
+  assert.strictEqual(run('npm test', { ANTI_SLOP_TOOL_GUARD: 'deny' }), '', 'a plain command must pass');
 }
 
 console.log('selftest ok');
