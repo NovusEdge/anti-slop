@@ -17,9 +17,15 @@ const os = require('os');
 const path = require('path');
 const { check, lastTurn } = require('./check.js');
 
-const REMIND_EVERY = Number(process.env.ANTI_SLOP_REMIND_EVERY || 10);
+const REMIND_EVERY = Number(process.env.ANTI_SLOP_REMIND_EVERY || 9);
 const MAX_REPORTED = 8;
-const RULES = path.join(__dirname, 'rules.md');
+const RULES_DIR = path.join(__dirname, 'rules');
+const CODE_EXT = new Set([
+  '.py', '.js', '.jsx', '.ts', '.tsx', '.go', '.rs', '.java', '.kt', '.c',
+  '.h', '.cc', '.cpp', '.cs', '.php', '.swift', '.scala', '.rb', '.sh',
+  '.bash', '.zsh', '.sql', '.lua', '.hs', '.ipynb',
+]);
+const PROSE_EXT = new Set(['.md', '.mdx', '.rst', '.txt', '.adoc']);
 const DIRECTIVE = {
   sycophancy: 'ANTI-SYCOPHANCY DIRECTIVE',
   word: 'BANNED VOCABULARY RULE',
@@ -30,94 +36,149 @@ const DIRECTIVE = {
   default: 'ANTI-SLOP RULE',
 };
 const SHORT =
-  'ANTI-SLOP DIRECTIVE, still in force: no contrast constructions ' +
-  '("it\'s not X, it\'s Y"), no LLM vocabulary (delve, leverage, crucial, ' +
-  '"load-bearing"), no LinkedIn cadence, no flattery and no apologies, ' +
+  'ANTI-SLOP DIRECTIVE, still in force: be surgical (lead with the outcome, ' +
+  'no preamble or closing summary), one adjective not three, no contrast ' +
+  'constructions ("it\'s not X, it\'s Y"), no LLM vocabulary (delve, leverage, ' +
+  'crucial, "load-bearing"), no LinkedIn cadence, no flattery and no apologies, ' +
   'no servile closer, active voice, one fact per sentence.';
 
-let input = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', c => (input += c));
-process.stdin.on('end', () => {
-  let data;
+// readRuleFile strips the ignore marker so the injected context omits it.
+function readRuleFile(name) {
   try {
-    data = JSON.parse(input);
+    return fs
+      .readFileSync(path.join(RULES_DIR, `${name}.md`), 'utf8')
+      .replace(/^<!-- anti-slop:.*$/gm, '')
+      .trim();
   } catch {
-    process.exit(0);
+    return null;
   }
+}
 
-  if (data.hook_event_name === 'PostToolUse') {
-    try {
-      midTurn(data);
-    } catch {
-      /* a malformed transcript must not disturb the tool result */
+// Deterministic router. The tool that just ran picks one rule file: a source
+// edit gets code, a docs edit gets prose, a git commit gets commit. The choice
+// is a pure function of the tool name, the command, and the file extension.
+// Anything else routes nothing.
+function ruleTargetFor(data) {
+  const input = data.tool_input || {};
+  // git writes the message inline (-m) or through an editor on COMMIT_EDITMSG.
+  // A -F/-C flag reads a file the model wrote with an earlier Write call.
+  if (data.tool_name === 'Bash' && /\bgit\b[^\n]*\bcommit\b/.test(input.command || '')) {
+    return 'commit';
+  }
+  if (['Write', 'Edit', 'MultiEdit', 'NotebookEdit'].includes(data.tool_name)) {
+    const file = input.file_path || input.notebook_path || '';
+    const base = path.basename(file);
+    if (base === 'COMMIT_EDITMSG' || base === 'MERGE_MSG' || base === 'TAG_EDITMSG') {
+      return 'commit';
     }
-    process.exit(0);
+    const ext = path.extname(file).toLowerCase();
+    if (PROSE_EXT.has(ext)) return 'prose';
+    if (CODE_EXT.has(ext)) return 'code';
   }
+  return null;
+}
 
-  if (data.hook_event_name !== 'UserPromptSubmit') {
-    if (!['SessionStart', 'SubagentStart'].includes(data.hook_event_name)) {
+function main() {
+  let input = '';
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', c => (input += c));
+  process.stdin.on('end', () => {
+    let data;
+    try {
+      data = JSON.parse(input);
+    } catch {
       process.exit(0);
     }
-    try {
-      // The linter's ignore marker belongs to the file, not to the context.
-      const rules = fs
-        .readFileSync(RULES, 'utf8')
-        .replace(/^<!-- anti-slop:.*$/gm, '')
-        .trim();
-      console.log(rules);
-    } catch {
-      console.log(SHORT);
-    }
-    process.exit(0);
-  }
 
-  const out = [];
-  try {
-    out.push(...report(data));
-  } catch {
-    /* a malformed transcript must not block the prompt */
-  }
-  if (bump(data.session_id) % REMIND_EVERY === 0) out.push(SHORT);
-  if (out.length) console.log(out.join('\n'));
-});
+    if (data.hook_event_name === 'PostToolUse') {
+      try {
+        midTurn(data);
+      } catch {
+        /* a malformed transcript must not disturb the tool result */
+      }
+      process.exit(0);
+    }
+
+    if (data.hook_event_name !== 'UserPromptSubmit') {
+      if (!['SessionStart', 'SubagentStart'].includes(data.hook_event_name)) {
+        process.exit(0);
+      }
+      console.log(readRuleFile('core') || SHORT);
+      process.exit(0);
+    }
+
+    const out = [];
+    try {
+      out.push(...report(data));
+    } catch {
+      /* a malformed transcript must not block the prompt */
+    }
+    if (bump(data.session_id) % REMIND_EVERY === 0) out.push(SHORT);
+    if (out.length) console.log(out.join('\n'));
+  });
+}
+
+// require.main guards the stdin read so selftest can require ruleTargetFor
+// without the module hanging on a stdin that never closes.
+if (require.main === module) main();
+
+module.exports = { ruleTargetFor, readRuleFile };
 
 // PostToolUse writes additionalContext next to the tool result, so a finding
 // reaches the model while the turn is still open and the rest of the prose is
 // still unwritten. Nothing blocks and no second message ships. The final message
 // of a turn arrives after the last tool call, so UserPromptSubmit still has work.
 //
-// Soft findings stay out. Length is not measurable on half a turn.
+// Two jobs. First, route a context rule file in: the tool that just ran picks
+// code, prose, or commit, and each target injects once per session. Second, lint
+// the prose written so far. Soft findings stay out; length is not measurable on
+// half a turn.
 function midTurn(data) {
-  const turn = lastTurn(data.transcript_path);
-  if (!turn.assistant) return;
-
   const state = loadState(data.session_id);
-  const turnKey = turnId(turn);
-  const seen = turnKey && state.turnKey === turnKey ? state.seen || [] : [];
+  const injected = state.injected || [];
+  const blocks = [];
 
-  const fresh = check(turn.assistant, turn.user)
-    .filter(v => !v.soft)
-    .filter(v => !seen.includes(key(v)));
-  if (!fresh.length) return;
+  const target = ruleTargetFor(data);
+  if (target && !injected.includes(target)) {
+    const text = readRuleFile(target);
+    if (text) {
+      blocks.push(text);
+      injected.push(target);
+    }
+  }
 
-  const shown = fresh.slice(0, MAX_REPORTED);
-  saveState(data.session_id, {
-    ...state,
-    turnKey,
-    seen: [...seen, ...shown.map(key)].slice(-40),
-  });
+  const turn = lastTurn(data.transcript_path);
+  let turnKey = state.turnKey;
+  let seen = state.seen || [];
+  if (turn.assistant) {
+    turnKey = turnId(turn);
+    const priorSeen = turnKey && state.turnKey === turnKey ? state.seen || [] : [];
+    const fresh = check(turn.assistant, turn.user)
+      .filter(v => !v.soft)
+      .filter(v => !priorSeen.includes(key(v)));
+    seen = priorSeen;
+    if (fresh.length) {
+      const shown = fresh.slice(0, MAX_REPORTED);
+      seen = [...priorSeen, ...shown.map(key)].slice(-40);
+      blocks.push(
+        [
+          'ANTI-SLOP: your prose earlier in this turn breaks the rules below.',
+          ...shown.map(v => `  ${DIRECTIVE[v.kind] || DIRECTIVE.default}: ${v.match} — "${v.sentence}"`),
+          'Write the rest of this turn without them. Do not rewrite the earlier ' +
+            'text and do not mention this notice.',
+        ].join('\n')
+      );
+    }
+  }
+
+  if (!blocks.length) return;
+  saveState(data.session_id, { ...state, turnKey, seen, injected });
 
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: 'PostToolUse',
-        additionalContext: [
-          'ANTI-SLOP: your prose earlier in this turn breaks the rules below.',
-          ...shown.map(v => `  ${DIRECTIVE[v.kind] || DIRECTIVE.default}: ${v.match} — "${v.sentence}"`),
-          'Write the rest of this turn without them. Do not rewrite the earlier ' +
-            'text and do not mention this notice.',
-        ].join('\n'),
+        additionalContext: blocks.join('\n\n'),
       },
     })
   );

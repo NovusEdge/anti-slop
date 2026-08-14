@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-description: "Enforce clear technical prose — STE grammar, no AI buzzwords, no LinkedIn cadence. Default mode for code comments, docstrings, commit messages, PR bodies."
+description: "Audit prose a human reads — comments, docstrings, commit messages, PR bodies, docs, chat replies. STE grammar, no AI buzzwords, no LinkedIn cadence, surgical brevity. Use anti-slop-code for source files."
 version: 0.1.0
 ---
 

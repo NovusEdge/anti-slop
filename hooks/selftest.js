@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { check, lastTurn } = require('./check.js');
+const { ruleTargetFor } = require('./inject.js');
 
 const hit = (text, user) => check(text, user).length > 0;
 
@@ -198,6 +199,68 @@ assert.ok(!found[0].sentence.includes('lock is fine'), 'sentence split failed');
     assert.ok(!/leverage/.test(run('UserPromptSubmit')), 'finding reported twice');
   } finally {
     fs.unlinkSync(file);
+    try { fs.unlinkSync(state); } catch { /* never written */ }
+  }
+}
+
+// ruleTargetFor maps a tool call to one rule file. Unit-tested directly, so a
+// new extension is one assertion away.
+{
+  const t = (tool, input) => ruleTargetFor({ tool_name: tool, tool_input: input });
+
+  for (const f of ['a.py', 'b.js', 'c.ts', 'd.tsx', 'e.go', 'f.rs', 'g.rb', 'h.sh', 'i.sql', 'j.c', 'k.cpp', 'l.ipynb']) {
+    const target = f.endsWith('.ipynb') ? t('NotebookEdit', { notebook_path: `/x/${f}` }) : t('Edit', { file_path: `/x/${f}` });
+    assert.strictEqual(target, 'code', `${f} should route code`);
+  }
+  for (const f of ['R.md', 'n.mdx', 'd.rst', 'p.txt', 'a.adoc']) {
+    assert.strictEqual(t('Write', { file_path: `/x/${f}` }), 'prose', `${f} should route prose`);
+  }
+  assert.strictEqual(t('MultiEdit', { file_path: '/x/m.go' }), 'code', 'MultiEdit on source routes code');
+
+  for (const cmd of ['git commit -m "x"', 'cd repo && git commit --amend', 'git -c user.name=x commit -m y']) {
+    assert.strictEqual(t('Bash', { command: cmd }), 'commit', `"${cmd}" should route commit`);
+  }
+  assert.strictEqual(t('Write', { file_path: '/r/.git/COMMIT_EDITMSG' }), 'commit', 'a commit message file routes commit');
+
+  for (const [tool, input] of [
+    ['Bash', { command: 'git status' }],
+    ['Bash', { command: 'git log --oneline' }],
+    ['Read', { file_path: '/x/a.py' }],
+    ['Edit', { file_path: '/x/data.json' }],
+    ['Edit', { file_path: '/x/config.yaml' }],
+    ['Edit', { file_path: '/x/logo.png' }],
+    ['Edit', { file_path: '/x/Makefile' }],
+  ]) {
+    assert.strictEqual(t(tool, input), null, `${tool} ${JSON.stringify(input)} should route nothing`);
+  }
+}
+
+// The deterministic router injects one rule file per target, once per session.
+{
+  const { execFileSync } = require('child_process');
+  const session = 'selftest-router';
+  const state = path.join(os.tmpdir(), `anti-slop-${session}.json`);
+  try { fs.unlinkSync(state); } catch { /* never written */ }
+  const run = (tool, input) =>
+    execFileSync(process.execPath, [path.join(__dirname, 'inject.js')], {
+      input: JSON.stringify({
+        hook_event_name: 'PostToolUse',
+        session_id: session,
+        transcript_path: '/nonexistent',
+        tool_name: tool,
+        tool_input: input,
+      }),
+      encoding: 'utf8',
+    });
+
+  try {
+    assert.match(run('Edit', { file_path: '/tmp/x.py' }), /ANTI-SLOP CODE DIRECTIVE/, 'code rules not routed for a .py edit');
+    assert.strictEqual(run('Edit', { file_path: '/tmp/y.py' }), '', 'code rules routed twice in one session');
+    assert.match(run('Write', { file_path: '/tmp/README.md' }), /ANTI-SLOP PROSE DIRECTIVE/, 'prose rules not routed for a .md edit');
+    assert.match(run('Bash', { command: 'git commit -m "fix"' }), /ANTI-SLOP COMMIT DIRECTIVE/, 'commit rules not routed for git commit');
+    assert.strictEqual(run('Read', { file_path: '/tmp/x.py' }), '', 'a read must route nothing');
+    assert.strictEqual(run('Bash', { command: 'git status' }), '', 'a non-commit git call must route nothing');
+  } finally {
     try { fs.unlinkSync(state); } catch { /* never written */ }
   }
 }
