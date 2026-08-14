@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { check, lastTurn } = require('./check.js');
-const { ruleTargetFor } = require('./inject.js');
+const { ruleTargetFor, fileOpReason } = require('./inject.js');
 
 const hit = (text, user) => check(text, user).length > 0;
 
@@ -263,6 +263,47 @@ assert.ok(!found[0].sentence.includes('lock is fine'), 'sentence split failed');
   } finally {
     try { fs.unlinkSync(state); } catch { /* never written */ }
   }
+}
+
+// The Bash guard flags file ops that belong to Write/Edit/Read, and passes the rest.
+{
+  const r = fileOpReason;
+  assert.ok(r('sed -i s/a/b/ notes.txt'), 'sed -i not flagged');
+  assert.ok(r('perl -pi -e s/a/b/ app.py'), 'perl -i not flagged');
+  assert.ok(r('echo "x" > config.py'), 'redirect to source not flagged');
+  assert.ok(r('cat <<EOF > server.js\nx\nEOF'), 'heredoc redirect not flagged');
+  assert.ok(r('printf "%s" done >> README.md'), 'append to docs not flagged');
+  assert.ok(r('tee out.md'), 'tee to a file not flagged');
+  assert.ok(r('cat README.md'), 'cat of a doc not flagged');
+  assert.ok(r('head -n 5 main.go'), 'head of source not flagged');
+
+  assert.strictEqual(r('npm test'), null, 'plain command flagged');
+  assert.strictEqual(r('echo hi > /dev/null'), null, 'a no-extension redirect flagged');
+  assert.strictEqual(r('cat foo.log'), null, 'a log read flagged');
+  assert.strictEqual(r('grep foo bar.py'), null, 'grep flagged');
+  assert.strictEqual(r('git commit -m "fix"'), null, 'commit flagged');
+  assert.strictEqual(r('rm -rf build'), null, 'rm flagged');
+}
+
+// The guard posture comes from ANTI_SLOP_TOOL_GUARD: ask by default, deny, or off.
+{
+  const { execFileSync } = require('child_process');
+  const run = (command, env) =>
+    execFileSync(process.execPath, [path.join(__dirname, 'inject.js')], {
+      input: JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command } }),
+      encoding: 'utf8',
+      env: { ...process.env, ...env },
+    });
+
+  const ask = JSON.parse(run('echo x > app.py', { ANTI_SLOP_TOOL_GUARD: 'ask' }));
+  assert.strictEqual(ask.hookSpecificOutput.permissionDecision, 'ask', 'default posture must ask');
+  assert.match(ask.hookSpecificOutput.permissionDecisionReason, /Write or Edit/, 'reason must name the tool');
+
+  const deny = JSON.parse(run('sed -i s/a/b/ app.py', { ANTI_SLOP_TOOL_GUARD: 'deny' }));
+  assert.strictEqual(deny.hookSpecificOutput.permissionDecision, 'deny', 'deny posture must deny');
+
+  assert.strictEqual(run('echo x > app.py', { ANTI_SLOP_TOOL_GUARD: 'off' }), '', 'off posture must stay silent');
+  assert.strictEqual(run('npm test', { ANTI_SLOP_TOOL_GUARD: 'deny' }), '', 'a plain command must pass');
 }
 
 console.log('selftest ok');

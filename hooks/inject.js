@@ -26,6 +26,10 @@ const CODE_EXT = new Set([
   '.bash', '.zsh', '.sql', '.lua', '.hs', '.ipynb',
 ]);
 const PROSE_EXT = new Set(['.md', '.mdx', '.rst', '.txt', '.adoc']);
+// Extensions the Bash guard treats as a real file: a redirect or a cat onto one
+// of these is a Write/Edit/Read job. A target with no known extension (a temp
+// file, /dev/null, a pipe) passes.
+const GUARD_EXT = [...CODE_EXT, ...PROSE_EXT].map(e => e.slice(1)).join('|');
 const DIRECTIVE = {
   sycophancy: 'ANTI-SYCOPHANCY DIRECTIVE',
   word: 'BANNED VOCABULARY RULE',
@@ -78,6 +82,47 @@ function ruleTargetFor(data) {
   return null;
 }
 
+// A Bash command that reads or writes a real file is doing a Write/Edit/Read
+// tool's job. Detection stays narrow: an in-place editor always counts, and a
+// redirect, a tee, or a cat counts only when the target ends in a known
+// extension. A temp file, /dev/null, or a pipe carries no extension and passes.
+function fileOpReason(command) {
+  const cmd = command || '';
+  const file = `[^\\s|&;<>()"']*\\.(?:${GUARD_EXT})\\b`;
+  if (/\bsed\b[^|&;]*\s-[a-z]*i\b/.test(cmd) || /\bperl\b[^|&;]*\s-[a-z]*i\b/.test(cmd)) {
+    return 'use the Edit tool for an in-place change instead of sed -i.';
+  }
+  if (new RegExp(`>>?\\s*${file}`).test(cmd)) {
+    return 'use the Write or Edit tool to change a file instead of a shell redirect.';
+  }
+  if (new RegExp(`\\btee\\b[^|&;]*\\s${file}`).test(cmd)) {
+    return 'use the Write tool to create a file instead of tee.';
+  }
+  if (new RegExp(`\\b(?:cat|head|tail)\\b[^|&;]*\\s${file}`).test(cmd)) {
+    return 'use the Read tool to read a file instead of cat, head, or tail.';
+  }
+  return null;
+}
+
+// PreToolUse guard on Bash. The reason reaches the model, so it retries with the
+// native tool. Posture comes from ANTI_SLOP_TOOL_GUARD: "ask" (default) routes
+// to the user's permission prompt, "deny" blocks outright, "off" disables it.
+function toolGuard(data) {
+  const posture = (process.env.ANTI_SLOP_TOOL_GUARD || 'ask').toLowerCase();
+  if (posture === 'off' || data.tool_name !== 'Bash') return;
+  const reason = fileOpReason((data.tool_input || {}).command);
+  if (!reason) return;
+  process.stdout.write(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: posture === 'deny' ? 'deny' : 'ask',
+        permissionDecisionReason: `anti-slop: ${reason}`,
+      },
+    })
+  );
+}
+
 function main() {
   let input = '';
   process.stdin.setEncoding('utf8');
@@ -87,6 +132,15 @@ function main() {
     try {
       data = JSON.parse(input);
     } catch {
+      process.exit(0);
+    }
+
+    if (data.hook_event_name === 'PreToolUse') {
+      try {
+        toolGuard(data);
+      } catch {
+        /* a guard failure must never block the tool call */
+      }
       process.exit(0);
     }
 
@@ -122,7 +176,7 @@ function main() {
 // without the module hanging on a stdin that never closes.
 if (require.main === module) main();
 
-module.exports = { ruleTargetFor, readRuleFile };
+module.exports = { ruleTargetFor, readRuleFile, fileOpReason };
 
 // PostToolUse writes additionalContext next to the tool result, so a finding
 // reaches the model while the turn is still open and the rest of the prose is
