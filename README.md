@@ -13,7 +13,16 @@ Run this inside Claude Code:
 /plugin install anti-slop@anti-slop
 ```
 
-From a shell: `curl -fsSL https://raw.githubusercontent.com/NovusEdge/anti-slop/main/install.sh | bash`, or `./install.sh --local` from a checkout. Restart Claude Code when it finishes.
+From a shell:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/NovusEdge/anti-slop/main/install.sh | bash
+
+# or, from a local checkout:
+./install.sh --local
+```
+
+Restart Claude Code when it finishes.
 
 ## What it tells the model
 
