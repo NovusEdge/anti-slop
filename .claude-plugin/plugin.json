@@ -1,7 +1,7 @@
 {
   "name": "curt",
   "displayName": "Curt",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Makes Claude Code write like Curt: terse, no buzzwords, no flattery. STE grammar and an anti-slop linter.",
   "author": {
     "name": "NovusEdge"
