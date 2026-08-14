@@ -34,5 +34,13 @@ jobs:
       - name: lint own docs
         run: python3 tools/lint.py --check README.md docs/CONTRIBUTING.md docs/CHANGELOG.md docs/hooks.md docs/linting.md
 
+      # The standalone linter allows a couple of em-dashes per line. This repo's
+      # own docs hold to zero, since the plugin exists to discourage them.
+      - name: no em-dashes in our own docs
+        run: |
+          if grep -rn "—" README.md docs/; then
+            echo "em-dash found above; use a colon, comma, or a second sentence"; exit 1
+          fi
+
       - name: lint own comments
         run: python3 tools/lint.py --check --code tools/ hooks/ install.sh

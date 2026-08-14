@@ -4,13 +4,13 @@ Thanks for helping. The plugin lints prose for a living, so it holds its own tex
 
 ## Layout
 
-- `patterns.json` — the single source for banned words, phrases, and structural tells. Both linters read it. Edit here, nowhere else.
-- `hooks/rules/` — the injected directives. `core.md` loads every session. `code.md`, `prose.md`, and `commit.md` are routed in by tool context.
-- `hooks/inject.js` — the hook entry point: session injection, the context router, the mid-turn lint, and the Bash guard.
-- `hooks/check.js` — slop detection over a transcript.
-- `tools/lint.py` — the standalone linter and `--code` comment linter.
-- `tools/ast_check.py` — structural checks that need a parse.
-- `tests/corpus.json` — shared fixtures. Both linters run them, so a divergence between the two fails CI.
+- `patterns.json`: the single source for banned words, phrases, and structural tells. Both linters read it. Edit here, nowhere else.
+- `hooks/rules/`: the injected directives. `core.md` loads every session. `code.md`, `prose.md`, and `commit.md` are routed in by tool context.
+- `hooks/inject.js`: the hook entry point: session injection, the context router, the mid-turn lint, and the Bash guard.
+- `hooks/check.js`: slop detection over a transcript.
+- `tools/lint.py`: the standalone linter and `--code` comment linter.
+- `tools/ast_check.py`: structural checks that need a parse.
+- `tests/corpus.json`: shared fixtures. Both linters run them, so a divergence between the two fails CI.
 
 ## Running the tests
 
