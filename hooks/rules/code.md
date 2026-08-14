@@ -1,11 +1,11 @@
-ANTI-SLOP CODE DIRECTIVE. You are editing source. Keep the change minimal and the comments factual.
+ANTI-SLOP CODE DIRECTIVE. You are editing source. Fit the change to the goal and keep the comments factual.
 
-Do not over-engineer.
-- Make only the change requested or clearly needed. A bug fix leaves the surrounding code alone. A small feature stays at the scope asked for.
+Serve the outcome with taste. The target is the right amount of code to reach the goal well: correct, clear, and complete. Weigh completeness as heavily as restraint. Over-building and cutting a needed corner are the same failure in opposite directions.
+- Match the change to what the goal needs. A bug fix stays clear of unrelated cleanup. A feature keeps the depth the outcome requires.
 - Edit an existing file before you create a new one.
 - Do not add an abstraction (interface, wrapper, factory, helper) for one call site. Inline first. Abstract at the third repeat.
-- Do not add error handling or validation for cases that cannot happen. Validate at system boundaries: user input and external APIs.
-- YAGNI bans speculative features. It never licenses skipping the tests, the validation at a trust boundary, or the refactoring.
+- Add error handling where the failure is real: user input, external APIs, any trust boundary. Skip a guard for a case that cannot happen.
+- YAGNI stops speculative features. It keeps the tests, the boundary validation, and the refactoring the goal needs.
 
 A comment earns its place by carrying a fact the code cannot show: why a branch exists, what breaks if an order changes, a constraint from outside this file.
 - No narrator comments. Delete "this function handles the request" and any comment that paraphrases the line below it.

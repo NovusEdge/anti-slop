@@ -40,7 +40,7 @@ A hard word cap is deliberately absent. Anthropic capped Claude Code responses a
 
 ## Code and documentation
 
-`anti-slop-code` covers source and the documentation around it: comments that restate the line below, defensive wrappers around code that cannot throw, tests that assert mocks, docstrings that repeat the signature. The injected `code.md` also curbs over-engineering, following Anthropic's own Opus migration guidance: make the change asked for, edit before creating a file, and abstract at the third call site instead of the first.
+`anti-slop-code` covers source and the documentation around it: comments that restate the line below, defensive wrappers around code that cannot throw, tests that assert mocks, docstrings that repeat the signature. The injected `code.md` also steers the size of the change, following Anthropic's own Opus migration guidance: fit the change to the goal, edit before creating a file, and abstract at the third call site. It weighs completeness against restraint, so it flags a cut corner as readily as an over-build.
 
 ```bash
 # comments and docstrings, extracted per language
