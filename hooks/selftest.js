@@ -45,7 +45,6 @@ assert.ok(
 );
 assert.ok(!hit('- one a\n- **Two** b\n- three c'), 'bold-bullet false positive');
 
-// The servile closer.
 assert.ok(hit("Say the word and I'll add the counter."), 'servile closer missed');
 assert.ok(hit('Just let me know.'), 'servile closer missed');
 assert.ok(hit('Happy to walk through the retry path.'), 'servile closer missed');
@@ -86,7 +85,6 @@ assert.ok(!hit('Postgres or SQLite?'), 'plain question blocked');
   assert.ok(hard.some(v => !v.soft), 'appositive contrast must block');
 }
 
-// Preamble and narration.
 assert.ok(hit('Yes, I read it. The lock is held.'), 'narration missed');
 assert.ok(hit("Here's the actual shape of the deploy."), 'preamble missed');
 assert.ok(hit('One thing I found while reading matters more.'), 'buried finding missed');
@@ -101,7 +99,6 @@ assert.ok(!hit('The runner polls /health until the version matches.'), 'plain re
   assert.ok(!check('The registry holds one lock.').some(v => v.soft), 'short reply flagged');
 }
 
-// Ambiguous words never block.
 assert.ok(!hit('The harness runs the hook.'), 'ambiguous word blocked');
 assert.ok(!hit('A robust retry covers the landscape.'), 'ambiguous words blocked');
 

@@ -1,0 +1,39 @@
+name: anti-slop review
+
+# Runs Claude on each PR to flag writing slop in the diff. Needs the repo secret
+# ANTHROPIC_API_KEY (or run /install-github-app). Fork PRs get no secret, so the
+# job is gated to same-repo branches.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  review:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && secrets.ANTHROPIC_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review the diff on this pull request against this repo's anti-slop
+            rules (hooks/rules/core.md and patterns.json). Check only the added
+            or changed lines. Flag:
+            - banned vocabulary (leverage, delve, crucial, robust, seamless, load-bearing, and the rest of patterns.json)
+            - contrast constructions ("it's not X, it's Y", "X isn't just Y")
+            - em-dashes in prose
+            - sycophancy and servile closers
+            - preamble or closing-summary padding in comments or the PR body
+            Post one concise summary comment with file:line for each hit. If the
+            diff is clean, say so in one line and stop.
+          claude_args: |
+            --model claude-sonnet-5
+            --max-turns 6

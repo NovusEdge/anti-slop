@@ -1,0 +1,25 @@
+name: release
+
+# Push a tag like v0.3.1 and this cuts the GitHub release from the matching
+# docs/CHANGELOG.md section.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: build release notes
+        run: python3 tools/changelog_section.py "${GITHUB_REF_NAME}" > "${RUNNER_TEMP}/notes.md"
+      - name: create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file "${RUNNER_TEMP}/notes.md"
