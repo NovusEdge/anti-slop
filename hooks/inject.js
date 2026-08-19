@@ -31,6 +31,7 @@ const PROSE_EXT = new Set(['.md', '.mdx', '.rst', '.txt', '.adoc']);
 // file, /dev/null, a pipe) passes.
 const GUARD_EXT = [...CODE_EXT, ...PROSE_EXT].map(e => e.slice(1)).join('|');
 const NOT_IN_AUTO = '<!-- curt: not-in-auto -->';
+const ONLY_IN_AUTO = '<!-- curt: only-in-auto -->';
 const DIRECTIVE = {
   sycophancy: 'ANTI-SYCOPHANCY DIRECTIVE',
   word: 'BANNED VOCABULARY RULE',
@@ -48,17 +49,18 @@ const SHORT =
   'no servile closer, active voice, one fact per sentence.';
 
 // readRuleFile strips the ignore marker so the injected context omits it.
-// A line tagged NOT_IN_AUTO drops out under the auto permission mode, where the
-// harness gives the model the opposite instruction. Two contradictory hard rules
-// in one context leave the model to pick one.
+// A line tagged NOT_IN_AUTO drops out under the auto permission mode.
+// A line tagged ONLY_IN_AUTO drops out unless the mode is auto.
 function readRuleFile(name, mode) {
   try {
     return fs
       .readFileSync(path.join(RULES_DIR, `${name}.md`), 'utf8')
       .split('\n')
       .filter(line => mode !== 'auto' || !line.includes(NOT_IN_AUTO))
+      .filter(line => mode === 'auto' || !line.includes(ONLY_IN_AUTO))
       .join('\n')
       .replaceAll(NOT_IN_AUTO, '')
+      .replaceAll(ONLY_IN_AUTO, '')
       .replace(/^<!-- anti-slop:.*$/gm, '')
       .trim();
   } catch {

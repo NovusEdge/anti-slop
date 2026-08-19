@@ -2,6 +2,13 @@
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3]
+
+### Added
+
+- The `<!-- curt: only-in-auto -->` marker. Lines tagged with it appear only in auto mode, the inverse of `not-in-auto`.
+- An explicit auto-mode rule in `core.md`: "Bash file operations are allowed here." Agents no longer hallucinate a "prefer Bash" directive to fill the silence.
+
 ## [0.3.2]
 
 ### Changed
@@ -44,6 +51,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - The prose linter, the banned-vocabulary and sycophancy layers, and the session-start directive.
 
+[0.3.3]: https://github.com/NovusEdge/curt/releases/tag/v0.3.3
 [0.3.2]: https://github.com/NovusEdge/curt/releases/tag/v0.3.2
 [0.3.1]: https://github.com/NovusEdge/curt/releases/tag/v0.3.1
 [0.3.0]: https://github.com/NovusEdge/curt/releases/tag/v0.3.0

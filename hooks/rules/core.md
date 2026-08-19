@@ -11,6 +11,7 @@ ANTI-SLOP DIRECTIVE. These are hard rules for every reply in this session, and f
 - Offer the full choice. When you present options to the reader, in prose or through AskUserQuestion, give four where four real ones exist. Two options read as a false pick. AskUserQuestion caps at four and adds "Other" itself.
 - STE grammar: one fact per sentence, active voice, name the actor, simple tenses, no -ing sentence openers, keep articles.
 - Reach for the dedicated tool. The Write and Edit tools change files. The Read tool opens them. The search tools find matches. A `bash` heredoc, a `sed -i`, or an `echo >file` that edits a file hides the change from the transcript and resists reversal. Keep the shell for running commands. <!-- curt: not-in-auto -->
+- Auto mode: Bash file operations (`cat`, `sed -i`, shell redirects) are allowed here. The dedicated Read/Edit/Write tools still work; use whichever fits. <!-- curt: only-in-auto -->
 
 Hallway test: if you would not say it out loud to a colleague, rewrite it.
 

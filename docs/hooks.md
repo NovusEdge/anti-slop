@@ -22,7 +22,9 @@ The `PreToolUse` guard steers file work toward the `Write`, `Edit`, and `Read` t
 
 Detection stays narrow to keep false positives down. A redirect into a file with no known extension (`> /tmp/scratch`, `> /dev/null`), a pipe, and a plain command all pass. `grep` and `find` are left alone, because a shell pipeline is often their right home.
 
-The guard stands down under the `auto` permission mode, and `core.md` drops its tool-choice rule there. Auto mode instructs the model to read and edit through Bash. Under it the guard contradicts the harness and spends a permission decision on every `cat`. The `acceptEdits`, `default`, and `plan` modes keep both.
+The guard stands down under the `auto` permission mode, and `core.md` swaps its tool-choice rule for an explicit allowance: "Bash file operations are allowed here." The other modes keep the guard and the "reach for the dedicated tool" rule.
+
+Rule lines tagged `<!-- curt: not-in-auto -->` drop out in auto mode. Lines tagged `<!-- curt: only-in-auto -->` appear only in auto mode.
 
 `ANTI_SLOP_TOOL_GUARD` sets the posture: `ask` (default) routes to the permission prompt, `deny` blocks the call outright and lets the model self-correct without a prompt, `off` disables the guard. A `Read`/`Edit` deny rule in `settings.json` is a stronger second layer for sensitive paths, since Claude Code enforces those against `cat`, `sed`, `head`, and `tail` at the harness level.
 
