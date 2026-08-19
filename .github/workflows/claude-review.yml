@@ -3,14 +3,20 @@ name: anti-slop review
 # Runs Claude on each PR to flag writing slop in the diff. Needs the repo secret
 # ANTHROPIC_API_KEY (or run /install-github-app). Fork PRs get no secret, so the
 # job is gated to same-repo branches.
+#
+# A job-level `if` cannot read the secrets context, so the missing-key check sits
+# on the step, where the env context is available. A repo without the key runs
+# the job to a green no-op.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   review:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && secrets.ANTHROPIC_API_KEY != '' }}
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     permissions:
       contents: read
       pull-requests: write
@@ -21,8 +27,9 @@ jobs:
         with:
           fetch-depth: 1
       - uses: anthropics/claude-code-action@v1
+        if: env.ANTHROPIC_API_KEY != ''
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_api_key: ${{ env.ANTHROPIC_API_KEY }}
           prompt: |
             Review the diff on this pull request against this repo's anti-slop
             rules (hooks/rules/core.md and patterns.json). Check only the added
