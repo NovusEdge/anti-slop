@@ -6,7 +6,7 @@ Five hooks run without being invoked.
 |---|---|---|
 | `SessionStart` | startup, resume, clear, **compact** | Injects `rules/core.md`. The `compact` matcher restores the rules after a summarization drops them. |
 | `SubagentStart` | every subagent and workflow agent | Injects `core.md` into the fresh context a subagent starts with. |
-| `PreToolUse` | every Bash call | Flags a file op that belongs to a native tool (a redirect into a source file, `sed -i`, `cat` of a doc) and asks before it runs. See Tool discipline below. |
+| `PreToolUse` | every Bash call outside auto mode | Flags a file op that belongs to a native tool (a redirect into a source file, `sed -i`, `cat` of a doc) and asks before it runs. See Tool discipline below. |
 | `PostToolUse` | every tool call | Routes one context rule file in (`code`/`prose`/`commit`, once each per session), then lints the prose written so far and reports a finding next to the tool result. |
 | `UserPromptSubmit` | every prompt | Lints the previous turn and names what `PostToolUse` did not reach. Every 9th prompt it restates a one-line reminder. |
 
@@ -21,6 +21,8 @@ The prose-lint hooks never block. `PostToolUse` and `UserPromptSubmit` carry the
 The `PreToolUse` guard steers file work toward the `Write`, `Edit`, and `Read` tools. It reads the Bash command and flags a file op that a native tool does better: an in-place editor (`sed -i`, `perl -pi`), a redirect or heredoc into a file with a source or docs extension (`echo x > app.py`, `cat <<EOF > server.js`), `tee` into such a file, or a `cat`/`head`/`tail` read of one. The model sees the reason and retries with the native tool.
 
 Detection stays narrow to keep false positives down. A redirect into a file with no known extension (`> /tmp/scratch`, `> /dev/null`), a pipe, and a plain command all pass. `grep` and `find` are left alone, because a shell pipeline is often their right home.
+
+The guard stands down under the `auto` permission mode, and `core.md` drops its tool-choice rule there. Auto mode instructs the model to read and edit through Bash. Under it the guard contradicts the harness and spends a permission decision on every `cat`. The `acceptEdits`, `default`, and `plan` modes keep both.
 
 `ANTI_SLOP_TOOL_GUARD` sets the posture: `ask` (default) routes to the permission prompt, `deny` blocks the call outright and lets the model self-correct without a prompt, `off` disables the guard. A `Read`/`Edit` deny rule in `settings.json` is a stronger second layer for sensitive paths, since Claude Code enforces those against `cat`, `sed`, `head`, and `tail` at the harness level.
 

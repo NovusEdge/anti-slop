@@ -30,6 +30,7 @@ const PROSE_EXT = new Set(['.md', '.mdx', '.rst', '.txt', '.adoc']);
 // of these is a Write/Edit/Read job. A target with no known extension (a temp
 // file, /dev/null, a pipe) passes.
 const GUARD_EXT = [...CODE_EXT, ...PROSE_EXT].map(e => e.slice(1)).join('|');
+const NOT_IN_AUTO = '<!-- curt: not-in-auto -->';
 const DIRECTIVE = {
   sycophancy: 'ANTI-SYCOPHANCY DIRECTIVE',
   word: 'BANNED VOCABULARY RULE',
@@ -47,10 +48,17 @@ const SHORT =
   'no servile closer, active voice, one fact per sentence.';
 
 // readRuleFile strips the ignore marker so the injected context omits it.
-function readRuleFile(name) {
+// A line tagged NOT_IN_AUTO drops out under the auto permission mode, where the
+// harness gives the model the opposite instruction. Two contradictory hard rules
+// in one context leave the model to pick one.
+function readRuleFile(name, mode) {
   try {
     return fs
       .readFileSync(path.join(RULES_DIR, `${name}.md`), 'utf8')
+      .split('\n')
+      .filter(line => mode !== 'auto' || !line.includes(NOT_IN_AUTO))
+      .join('\n')
+      .replaceAll(NOT_IN_AUTO, '')
       .replace(/^<!-- anti-slop:.*$/gm, '')
       .trim();
   } catch {
@@ -107,9 +115,14 @@ function fileOpReason(command) {
 // PreToolUse guard on Bash. The reason reaches the model, so it retries with the
 // native tool. Posture comes from ANTI_SLOP_TOOL_GUARD: "ask" (default) routes
 // to the user's permission prompt, "deny" blocks outright, "off" disables it.
+//
+// The auto permission mode tells the model to read and edit through Bash. The
+// guard stays off there. It would contradict the harness and spend a permission
+// decision on every cat.
 function toolGuard(data) {
   const posture = (process.env.ANTI_SLOP_TOOL_GUARD || 'ask').toLowerCase();
-  if (posture === 'off' || data.tool_name !== 'Bash') return;
+  if (posture === 'off' || data.permission_mode === 'auto') return;
+  if (data.tool_name !== 'Bash') return;
   const reason = fileOpReason((data.tool_input || {}).command);
   if (!reason) return;
   process.stdout.write(
@@ -157,7 +170,7 @@ function main() {
       if (!['SessionStart', 'SubagentStart'].includes(data.hook_event_name)) {
         process.exit(0);
       }
-      console.log(readRuleFile('core') || SHORT);
+      console.log(readRuleFile('core', data.permission_mode) || SHORT);
       process.exit(0);
     }
 
@@ -194,7 +207,7 @@ function midTurn(data) {
 
   const target = ruleTargetFor(data);
   if (target && !injected.includes(target)) {
-    const text = readRuleFile(target);
+    const text = readRuleFile(target, data.permission_mode);
     if (text) {
       blocks.push(text);
       injected.push(target);

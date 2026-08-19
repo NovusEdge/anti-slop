@@ -303,4 +303,25 @@ assert.ok(!found[0].sentence.includes('lock is fine'), 'sentence split failed');
   assert.strictEqual(run('npm test', { ANTI_SLOP_TOOL_GUARD: 'deny' }), '', 'a plain command must pass');
 }
 
+// The auto permission mode turns the guard off and drops the tool-choice rule.
+{
+  const { execFileSync } = require('child_process');
+  const run = payload =>
+    execFileSync(process.execPath, [path.join(__dirname, 'inject.js')], {
+      input: JSON.stringify(payload),
+      encoding: 'utf8',
+    });
+  const guard = mode =>
+    run({ hook_event_name: 'PreToolUse', permission_mode: mode, tool_name: 'Bash', tool_input: { command: 'sed -i s/a/b/ app.py' } });
+
+  assert.strictEqual(guard('auto'), '', 'the guard must stay silent in auto mode');
+  assert.ok(guard('acceptEdits'), 'the guard must still fire in acceptEdits mode');
+  assert.ok(guard(undefined), 'the guard must still fire when the mode is absent');
+
+  const rules = mode => run({ hook_event_name: 'SessionStart', permission_mode: mode });
+  assert.ok(!/Reach for the dedicated tool/.test(rules('auto')), 'auto mode must not carry the tool-choice rule');
+  assert.match(rules('default'), /Reach for the dedicated tool/, 'every other mode keeps the tool-choice rule');
+  assert.ok(!/not-in-auto/.test(rules('default')), 'the marker must not reach the model');
+}
+
 console.log('selftest ok');

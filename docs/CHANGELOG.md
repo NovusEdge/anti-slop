@@ -2,6 +2,12 @@
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2]
+
+### Changed
+
+- The `PreToolUse` Bash guard and the tool-choice rule in `core.md` stand down under the `auto` permission mode. Auto mode tells the model to read and edit through Bash, so both fought the harness and spent a permission decision on every `cat`. Every other mode keeps them.
+
 ## [0.3.1]
 
 ### Changed
@@ -38,6 +44,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - The prose linter, the banned-vocabulary and sycophancy layers, and the session-start directive.
 
+[0.3.2]: https://github.com/NovusEdge/curt/releases/tag/v0.3.2
 [0.3.1]: https://github.com/NovusEdge/curt/releases/tag/v0.3.1
 [0.3.0]: https://github.com/NovusEdge/curt/releases/tag/v0.3.0
 [0.2.0]: https://github.com/NovusEdge/curt/releases/tag/v0.2.0
