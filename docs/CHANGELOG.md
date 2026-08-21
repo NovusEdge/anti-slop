@@ -12,6 +12,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - `if you want, I can ...` and `if you'd like, I can ...` no longer count as servile closers. The trigger rule names that form as the fix, so blocking it left no allowed way to offer.
 
+## [0.4.2]
+
+### Changed
+
+- Two TDD rules in `code.md`: write the test before the code, and test behaviour at boundaries. A test written after the code asserts what already runs, bugs included.
+- Rewrote the Tests section of the `anti-slop-code` skill around the same two rules. The list holds seven entries instead of eight and drops the mutation-testing note.
+
+## [0.4.1]
+
+### Added
+
+- Four sycophancy patterns for engagement with a framing rather than the substance: "love the framing", "interesting way to look at it", "the metaphor maps well".
+- Nine verbosity patterns in three groups: scope expansion ("I'll also add", "while I'm at it"), correction narration ("I was wrong earlier"), and over-verification ("just to be sure", "let me double-check").
+- Three structural patterns for filler section headers: `## Overview`, `## Next Steps`, `## Final Thoughts`.
+- The scope rule in `core.md`. Deliver the task at the scope asked, and name a better approach in a sentence without widening the work.
+
+## [0.4.0]
+
+### Added
+
+- Seventeen verbosity patterns for agentic narration. They cover announcing ("I'm going to check"), progress ("Now let me"), verification ("I've confirmed that"), observation ("I can see that"), and source ("based on my analysis").
+- Three structural patterns for summary preambles and headers: "Here's a summary", `## Summary`, "In conclusion".
+- The verification and output-shape rules in `core.md`. One pass verifies, the reply carries the result, and the shape matches the task.
+
 ## [0.3.3]
 
 ### Added
@@ -62,6 +86,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The prose linter, the banned-vocabulary and sycophancy layers, and the session-start directive.
 
 [0.4.3]: https://github.com/NovusEdge/curt/releases/tag/v0.4.3
+[0.4.2]: https://github.com/NovusEdge/curt/releases/tag/v0.4.2
+[0.4.1]: https://github.com/NovusEdge/curt/releases/tag/v0.4.1
+[0.4.0]: https://github.com/NovusEdge/curt/releases/tag/v0.4.0
 [0.3.3]: https://github.com/NovusEdge/curt/releases/tag/v0.3.3
 [0.3.2]: https://github.com/NovusEdge/curt/releases/tag/v0.3.2
 [0.3.1]: https://github.com/NovusEdge/curt/releases/tag/v0.3.1
