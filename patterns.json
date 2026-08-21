@@ -117,7 +117,23 @@
     ["(^|[.!?] )(it'?s|that'?s) (important|worth) (to (note|understand)|noting|understanding)", "filler opener"],
     ["(^|[.!?] )(and )?that changes (my|the) earlier (wording|answer|framing)", "narrating a correction"],
     ["(^|[.!?] )(actually,? wait|wait,? no|on second thought|let me reconsider|scratch that)\\b", "thinking out loud instead of answering"],
-    ["(^|[.!?] )here'?s (a|the) (quick |brief |short )?summary of (the |your )?(change|work|what)", "closing summary the reader did not ask for"]
+    ["(^|[.!?] )here'?s (a|the) (quick |brief |short )?summary of (the |your )?(change|work|what)", "closing summary the reader did not ask for"],
+    ["(^|[.!?] )i'?m going to (start|begin|first|look|check|read|examine|analyze|search|find)", "announcing instead of doing"],
+    ["(^|[.!?] )i'?ll (start|begin|first) by ", "announcing instead of doing"],
+    ["(^|[.!?] )(now|next),? (i'?ll|let me|let'?s|i need to|i want to) ", "narrating progress"],
+    ["(^|[.!?] )moving (on|forward) to ", "narrating progress"],
+    ["(^|[.!?] )let me (verify|confirm|check|double[- ]check) (that|this|if|whether)", "narrating verification"],
+    ["(^|[.!?] )i'?ve (verified|confirmed|checked|double[- ]checked) (that|this|it)", "narrating verification"],
+    ["(^|[.!?] )after (verifying|confirming|checking|reading|reviewing) ", "narrating verification"],
+    ["(^|[.!?] )(to answer your question|in response to your|addressing your)", "meta-framing"],
+    ["(^|[.!?] )the (goal|idea|plan|approach) (here )?(is|was) to ", "narrating intent"],
+    ["(^|[.!?] )what (this|that|i'?m|we'?re) (does|doing|trying to do) is ", "explaining instead of doing"],
+    ["(^|[.!?] )i'?ll need to ", "announcing instead of doing"],
+    ["(^|[.!?] )i (should|need to|want to|have to) (first |also )?(look|check|read|examine|verify|search|find|review)", "announcing instead of doing"],
+    ["(^|[.!?] )(i'?m )?(currently |now )?(looking|checking|reading|examining|searching|analyzing|reviewing|verifying)\\b", "narrating in progress"],
+    ["(^|[.!?] )i (can see|notice|observe|found|discovered) (that|here)", "narrating observation"],
+    ["(^|[.!?] )(based on|from) (my|this|the) (reading|analysis|review|check|examination|verification)", "narrating source"],
+    ["(^|[.!?] )upon (reading|checking|reviewing|examining|inspection)", "narrating source"]
   ],
 
   "_ambiguous_phrases_comment": "Often legitimate: `use tabs, not spaces` is a plain corrective. Reported on the next turn, never blocked, so a real use costs one line and no rewrite.",
@@ -229,7 +245,10 @@
     ["^(to be clear|quick framing|a quick note|let me be clear|for context)\\b", "meta-commentary"],
     ["^i don'?t want this (to be )?read as\\b", "meta-commentary"],
     ["^that said,", "transition scaffolding"],
-    ["^#{1,6}\\s*[🌀-🫿☀-➿]", "emoji as section marker"]
+    ["^#{1,6}\\s*[🌀-🫿☀-➿]", "emoji as section marker"],
+    ["^(here'?s|here is) (a |the )?(summary|overview|breakdown|rundown|quick look)", "preamble before content"],
+    ["^## (summary|conclusion|takeaways|key points|in short)\\b", "summary section header"],
+    ["^(in (summary|conclusion)|to (summarize|conclude|wrap up))\\b", "trailing summary"]
   ],
 
   "_ste_comment": "Matched case-sensitively. The -ing rule anchors on a capital, so it needs the case; the tense rules opt back in with (?i).",
