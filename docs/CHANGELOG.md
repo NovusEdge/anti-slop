@@ -2,6 +2,16 @@
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4]
+
+### Added
+
+- The staged-trigger rule in `core.md`. An offer of undone work goes out as "Would you like me to X?" or "I can X if you want", never as "say the word and I'll X" or "once you confirm, I'll X". Three patterns back it: an imperative that hands off to "and I'll", a "once you confirm ... I'll" clause, and "give me the go-ahead".
+
+### Changed
+
+- `if you want, I can ...` and `if you'd like, I can ...` no longer count as servile closers. The trigger rule names that form as the fix, so blocking it left no allowed way to offer.
+
 ## [0.3.3]
 
 ### Added
@@ -51,6 +61,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - The prose linter, the banned-vocabulary and sycophancy layers, and the session-start directive.
 
+[0.3.4]: https://github.com/NovusEdge/curt/releases/tag/v0.3.4
 [0.3.3]: https://github.com/NovusEdge/curt/releases/tag/v0.3.3
 [0.3.2]: https://github.com/NovusEdge/curt/releases/tag/v0.3.2
 [0.3.1]: https://github.com/NovusEdge/curt/releases/tag/v0.3.1

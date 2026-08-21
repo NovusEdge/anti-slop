@@ -49,9 +49,15 @@ assert.ok(hit("Say the word and I'll add the counter."), 'servile closer missed'
 assert.ok(hit('Just let me know.'), 'servile closer missed');
 assert.ok(hit('Happy to walk through the retry path.'), 'servile closer missed');
 assert.ok(hit('Hope this helps.'), 'servile closer missed');
-assert.ok(hit('If you want, I can add metrics.'), 'servile closer missed');
 // A plain question is allowed.
 assert.ok(!hit('Postgres or SQLite?'), 'plain question blocked');
+
+assert.ok(hit("Point me at the failing case and I'll fix it."), 'staged trigger missed');
+assert.ok(hit("Once you confirm the scope, I'll rewrite status.md."), 'staged trigger missed');
+assert.ok(hit("Give me the go-ahead and the migration runs tonight."), 'staged trigger missed');
+// The offer forms the trigger rule points at.
+assert.ok(!hit('Would you like me to add metrics?'), 'offer as a question blocked');
+assert.ok(!hit('I can add metrics if you want.'), 'offer as a capability blocked');
 
 // Reflexive agreement. Needs both sides of the turn, so the hook alone runs it.
 {

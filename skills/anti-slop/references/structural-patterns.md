@@ -86,7 +86,6 @@ A sign-off that hands the decision back instead of ending the message. It perfor
 - "Happy to ...", "I'd be glad to ..."
 - "Feel free to ..."
 - "Hope this helps"
-- "If you want, I can ..."
 - "Shall I proceed?", "Does that work for you?"
 
 State what remains available and stop. The reader knows they can reply.
@@ -100,6 +99,24 @@ Ask a real question when the answer changes the work and you cannot pick a defau
 **Before:** "Let me know if you'd like me to use Postgres or SQLite, or if you have another preference, happy to go either way."
 
 **After:** "Postgres or SQLite?"
+
+## The Staged Trigger
+
+An offer of undone work, written as a standing order the reader has to fire. It reads as a demand for a command word, and the reader has to answer it in the shape you chose.
+
+**Banned forms:**
+- "Say the word and I'll ..."
+- "Point me at the file and I'll ..."
+- "Once you confirm the scope, I'll ..."
+- "Give me the go-ahead and I'll ..."
+
+Ask for the work as a question, or offer it as a capability. Both let the reader answer yes or no.
+
+**Before:** "Say the word on scope and I will rewrite status.md against current state, flip the COSTS.md mic row, and refresh the two CHECKPOINT.md lines."
+
+**After:** "Would you like me to rewrite status.md, flip the COSTS.md mic row, and refresh the CHECKPOINT.md lines?"
+
+"I can rewrite status.md against current state if you want" carries the same offer and stays a sentence.
 
 ## Structural Tells
 
