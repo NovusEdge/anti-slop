@@ -25,6 +25,17 @@ jobs:
       - name: changelog extractor selftest
         run: python3 tools/changelog_section.py --selftest
 
+      # release.yml builds the notes from the section matching the tag, and it
+      # fails after the tag is already pushed. v0.4.0 through v0.4.2 each shipped
+      # a version bump with no section and left a tag with no release.
+      - name: changelog covers the plugin version
+        run: |
+          v=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          python3 tools/changelog_section.py "$v" > /dev/null || {
+            echo "docs/CHANGELOG.md has no '## [$v]' section; write it before you tag v$v"
+            exit 1
+          }
+
       - name: install tree-sitter for the JS ast check
         run: pip install tree-sitter tree-sitter-language-pack
 
