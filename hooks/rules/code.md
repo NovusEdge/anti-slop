@@ -16,6 +16,8 @@ A comment earns its place by carrying a fact the code cannot show: why a branch 
 - A docstring states what the caller cannot infer from the signature. It does not repeat the parameter list.
 - No defensive wrapper around code that cannot throw. No catch that swallows the error.
 - Tests assert behaviour, not mocks. No "assert True", no asserting a value against itself, no "assert_called" as the only check.
+- Write the test before the code. A test written after the code asserts what already runs, bugs included. A test written first defines the behavior the code must satisfy.
+- Test behavior at boundaries, not every line. A pure function with no branches needs one test. A function with three branches needs three. Coverage measures lines that ran, not bugs that would be caught.
 
 Comments follow the core rules too: STE grammar, active voice, no banned vocabulary.
 

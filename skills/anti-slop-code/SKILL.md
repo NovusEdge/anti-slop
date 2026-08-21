@@ -78,26 +78,14 @@ Same for a method on a library type. Read the signature, then call it.
 
 ### Tests
 
-- **State the expected outcome before you write the test body**, from the
-  requirement. An assertion built by running the code and pasting the output
-  encodes today's behaviour, bugs included.
-- **A red test is a claim that the code is wrong.** Fix the code. Change the
-  test only when you can name why the expectation was wrong, and put that reason
-  in the commit body.
-- **Never weaken an assertion to reach green.** Loosening `==` to `is not None`,
-  widening a tolerance, skipping the case, deleting the case, or catching the
-  exception the test exists to prove: each makes the suite green and the code no
-  more correct.
-- **Assert behaviour.** A test that asserts which internal method was called in
-  which order breaks on a refactor that changed nothing, and passes when the
-  behaviour is wrong. Mock what hits the network, the clock, or the disk, and
-  nothing else.
-- **No tautologies.** `assert True`, `assert x == x`, an expected value produced
-  by calling the code under test.
-- **Cover the boundary and the error path**, which is where the bugs are and
-  where a single happy-path test stops.
-- **Coverage counts lines that ran.** When it is high and the suite feels thin,
-  run a mutation test; surviving mutants are changes no assertion objected to.
+- **Write the test before the code.** A test written after the code passes because the code runs, bugs included. A test written first defines the behavior the code must satisfy. The order matters: test → red → code → green → refactor.
+- **State the expected outcome from the requirement**, not from running the code. An assertion built by pasting output encodes today's behavior. A test that went green on the first run never proved anything.
+- **A red test is a claim that the code is wrong.** Fix the code. Change the test only when you can name why the expectation was wrong, and put that reason in the commit body.
+- **Never weaken an assertion to reach green.** Loosening `==` to `is not None`, widening a tolerance, skipping the case, deleting the case, or catching the exception the test exists to prove: each makes the suite green and the code no more correct.
+- **Test behavior at boundaries, not every line.** A pure function with no branches needs one test. A function with three branches needs three. A getter needs zero. Coverage measures lines that ran, not bugs that would be caught; a 100% covered codebase with no boundary tests catches nothing.
+- **Assert behaviour, not implementation.** A test that asserts which internal method was called in which order breaks on a refactor that changed nothing, and passes when the behaviour is wrong. Mock what hits the network, the clock, or the disk, and nothing else.
+- **No tautologies.** `assert True`, `assert x == x`, an expected value produced by calling the code under test.
+- **Cover the error path**, which is where the bugs are and where a single happy-path test stops.
 
 See `references/tests.md`.
 
