@@ -83,8 +83,12 @@
     "game[- ]changer"
   ],
 
-  "_sycophancy_comment": "Flattery, reflexive agreement, apology inflation. The regexes catch the surface. The judgment half lives in skills/anti-slop/references/sycophancy.md, where no linter reaches.",
+  "_sycophancy_comment": "Flattery, reflexive agreement, apology inflation, and plausible-sounding engagement with nonsense. The regexes catch the surface. The judgment half lives in skills/anti-slop/references/sycophancy.md, where no linter reaches.",
   "sycophancy": [
+    "(^|[.!?] )(love|like) (the|this|that) (framing|approach|way of (thinking|looking|putting it))",
+    "(^|[.!?] )(fun|interesting|creative|clever) (framing|metaphor|way to (think|look|frame))",
+    "(^|[.!?] )that('?s| is) (a |an )?(interesting|creative|fun|novel|clever) (way to|angle|lens|perspective)",
+    "(^|[.!?] )the metaphor (maps|extends|works) (surprisingly )?(well|nicely)",
     "(^|[.!?] )(great|good|excellent|interesting|fair|nice|smart) (question|point|call|catch|idea|observation|suggestion|thinking)\\b",
     "your (approach|design|idea|point|instinct|solution|refactor|reading|question|concern) (is|was) (a )?(great|good|right|clean|correct|valid|fair|solid|elegant|smart)",
     "(that'?s|this is|that is) (a|an) (great|good|excellent|fair|valid|interesting|nice|smart|clever|clean|elegant|solid) (point|question|call|catch|idea|observation|suggestion|approach|design|solution|refactor|way|instinct)\\b",
@@ -133,7 +137,16 @@
     ["(^|[.!?] )(i'?m )?(currently |now )?(looking|checking|reading|examining|searching|analyzing|reviewing|verifying)\\b", "narrating in progress"],
     ["(^|[.!?] )i (can see|notice|observe|found|discovered) (that|here)", "narrating observation"],
     ["(^|[.!?] )(based on|from) (my|this|the) (reading|analysis|review|check|examination|verification)", "narrating source"],
-    ["(^|[.!?] )upon (reading|checking|reviewing|examining|inspection)", "narrating source"]
+    ["(^|[.!?] )upon (reading|checking|reviewing|examining|inspection)", "narrating source"],
+    ["(^|[.!?] )i'?ll also (add|include|check|update|fix|create|make)", "scope expansion"],
+    ["(^|[.!?] )while (i'?m|we'?re) (at it|here|doing this)", "scope expansion"],
+    ["(^|[.!?] )i (should|might as well|may as well) also ", "scope expansion"],
+    ["(^|[.!?] )(i need to|let me) correct (my|an|the) earlier", "correction narration"],
+    ["(^|[.!?] )(actually,? )?(i was|that was) (wrong|incorrect|mistaken) (about|earlier|when)", "correction narration"],
+    ["(^|[.!?] )i (said|stated|mentioned) earlier that .{10,60}, but", "correction narration"],
+    ["(^|[.!?] )let me (re-?check|double[- ]?check|verify (this|that|it) (again|once more))", "over-verification"],
+    ["(^|[.!?] )just to (be sure|make sure|confirm|double[- ]?check)", "over-verification"],
+    ["(^|[.!?] )i'?ll (run|do) (a|one more|another) (quick )?(check|verification|test|pass)", "over-verification"]
   ],
 
   "_ambiguous_phrases_comment": "Often legitimate: `use tabs, not spaces` is a plain corrective. Reported on the next turn, never blocked, so a real use costs one line and no rewrite.",
@@ -248,7 +261,10 @@
     ["^#{1,6}\\s*[🌀-🫿☀-➿]", "emoji as section marker"],
     ["^(here'?s|here is) (a |the )?(summary|overview|breakdown|rundown|quick look)", "preamble before content"],
     ["^## (summary|conclusion|takeaways|key points|in short)\\b", "summary section header"],
-    ["^(in (summary|conclusion)|to (summarize|conclude|wrap up))\\b", "trailing summary"]
+    ["^(in (summary|conclusion)|to (summarize|conclude|wrap up))\\b", "trailing summary"],
+    ["^## (overview|introduction|background|context|about)\\b", "filler section header"],
+    ["^## (next steps|what'?s next|going forward|moving forward)\\b", "boilerplate section"],
+    ["^## (additional (notes|considerations|thoughts)|final thoughts)\\b", "padding section"]
   ],
 
   "_ste_comment": "Matched case-sensitively. The -ing rule anchors on a capital, so it needs the case; the tense rules opt back in with (?i).",
